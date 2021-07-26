@@ -29,7 +29,9 @@ setup(
         "importlib-metadata<2.0,>=1.0",
         "tensorboard!=2.5.0,>=2.2.0",
         "grpcio~=1.32.0",
-        "huggingface-hub==0.0.12"
+        "huggingface-hub==0.0.12",
+        "tqdm>=4.56.0",
+        "six~=1.15.0"
     ],
     dependency_links=['https://download.pytorch.org/whl/torch_stable.html'],
     packages=find_packages(),
