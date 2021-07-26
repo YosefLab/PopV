@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="popv",
-    version="0.0.1",
+    version="0.0.2",
     description="The PopV algorithm",
     long_description="The PopV algorithm for unsupervised label transfer from reference datasets.",
     long_description_content_type="text/markdown",
