@@ -786,6 +786,7 @@ def run_onclass(
         test_X = adata[test_idx].layers[layer].todense()
 
     train_genes = adata[train_idx].var_names
+    test_genes = adata[test_idx].var_names
     train_Y = adata[train_idx].obs[cell_ontology_obs_key]
 
     test_adata = adata[test_idx]
@@ -793,23 +794,32 @@ def run_onclass(
     _ = train_model.EmbedCellTypes(train_Y)
 
     model_path = "OnClass"
+    corr_train_feature, corr_test_feature, corr_train_genes, corr_test_genes = train_model.ProcessTrainFeature(train_X, 
+                                                                                                           train_Y,
+                                                                                                           train_genes,
+                                                                                                           test_feature=test_X,
+                                                                                                           test_genes=test_genes)
 
-    train_model.BuildModel(ngene=adata.n_vars)
+    train_model.BuildModel(ngene=len(corr_train_genes))
     train_model.Train(
-        train_X, train_Y, save_model=model_path, genes=train_genes, max_iter=max_iter
+        corr_train_feature, train_Y, save_model=model_path, max_iter=max_iter
     )
 
     test_adata.obs[save_key] = "na"
+    
+    corr_test_feature = train_model.ProcessTestFeature(corr_test_feature, corr_test_genes, use_pretrain = model_path, log_transform = False)
 
     if test_adata.n_obs > shard_size:
         for i in range(0, test_adata.n_obs, shard_size):
-            tmp_X = test_X[i : i + shard_size]
-            onclass_pred = train_model.Predict(tmp_X)
+            tmp_X = corr_test_feature[i : i + shard_size]
+            onclass_pred = train_model.Predict(tmp_X, use_normalize=False)
+            import pdb
+            pdb.set_trace()
             pred_label_str = [train_model.i2co[l] for l in onclass_pred[2]]
             pred_label_str = [clid_2_name[i] for i in pred_label_str]
             test_adata.obs[save_key][i : i + shard_size] = pred_label_str
     else:
-        onclass_pred = train_model.Predict(test_X)
+        onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False)
         pred_label_str = [train_model.i2co[l] for l in onclass_pred[2]]
         pred_label_str = [clid_2_name[i] for i in pred_label_str]
         test_adata.obs[save_key] = pred_label_str
