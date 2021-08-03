@@ -813,8 +813,6 @@ def run_onclass(
         for i in range(0, test_adata.n_obs, shard_size):
             tmp_X = corr_test_feature[i : i + shard_size]
             onclass_pred = train_model.Predict(tmp_X, use_normalize=False)
-            import pdb
-            pdb.set_trace()
             pred_label_str = [train_model.i2co[l] for l in onclass_pred[2]]
             pred_label_str = [clid_2_name[i] for i in pred_label_str]
             test_adata.obs[save_key][i : i + shard_size] = pred_label_str
