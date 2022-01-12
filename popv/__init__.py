@@ -5,6 +5,7 @@ import anndata
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import networkx as nx
 import scipy.sparse as sp_sparse
 import scanorama
 import scanpy as sc
@@ -19,7 +20,6 @@ from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import KNeighborsClassifier
 import matplotlib.backends.backend_pdf
 from numba import boolean, float32, float64, int32, int64, vectorize
-
 
 def make_cell_ontology_id(adata, labels_key, celltype_dict, ontology_key=None):
     """
@@ -109,6 +109,8 @@ def prediction_eval(
     for fig in range(1, plt.gcf().number + 1):
         pdf.savefig(fig)
     pdf.close()
+    return plt.figure(1)
+    
 
 
 def make_agreement_plots(adata, methods, save_folder):
@@ -366,6 +368,8 @@ def process_query(
         AnnData object that is setup for use with the annotation pipeline
 
     """
+    # TODO add check that varnames are all unique
+    
     assert _check_nonnegative_integers(query_adata.X) == True
     assert _check_nonnegative_integers(ref_adata.X) == True
     
@@ -786,6 +790,7 @@ def run_onclass(
         test_X = adata[test_idx].layers[layer].todense()
 
     train_genes = adata[train_idx].var_names
+    test_genes = adata[test_idx].var_names
     train_Y = adata[train_idx].obs[cell_ontology_obs_key]
 
     test_adata = adata[test_idx]
@@ -793,23 +798,30 @@ def run_onclass(
     _ = train_model.EmbedCellTypes(train_Y)
 
     model_path = "OnClass"
+    corr_train_feature, corr_test_feature, corr_train_genes, corr_test_genes = train_model.ProcessTrainFeature(train_X, 
+                                                                                                           train_Y,
+                                                                                                           train_genes,
+                                                                                                           test_feature=test_X,
+                                                                                                           test_genes=test_genes)
 
-    train_model.BuildModel(ngene=adata.n_vars)
+    train_model.BuildModel(ngene=len(corr_train_genes))
     train_model.Train(
-        train_X, train_Y, save_model=model_path, genes=train_genes, max_iter=max_iter
+        corr_train_feature, train_Y, save_model=model_path, max_iter=max_iter
     )
 
     test_adata.obs[save_key] = "na"
+    
+    corr_test_feature = train_model.ProcessTestFeature(corr_test_feature, corr_test_genes, use_pretrain = model_path, log_transform = False)
 
     if test_adata.n_obs > shard_size:
         for i in range(0, test_adata.n_obs, shard_size):
-            tmp_X = test_X[i : i + shard_size]
-            onclass_pred = train_model.Predict(tmp_X)
+            tmp_X = corr_test_feature[i : i + shard_size]
+            onclass_pred = train_model.Predict(tmp_X, use_normalize=False)
             pred_label_str = [train_model.i2co[l] for l in onclass_pred[2]]
             pred_label_str = [clid_2_name[i] for i in pred_label_str]
             test_adata.obs[save_key][i : i + shard_size] = pred_label_str
     else:
-        onclass_pred = train_model.Predict(test_X)
+        onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False)
         pred_label_str = [train_model.i2co[l] for l in onclass_pred[2]]
         pred_label_str = [clid_2_name[i] for i in pred_label_str]
         test_adata.obs[save_key] = pred_label_str
@@ -1045,3 +1057,105 @@ def run_scanvi(
 
     if save_folder is not None:
         model.save(save_folder, overwrite=overwrite, save_anndata=save_anndata)
+
+
+
+def calculate_depths(g):
+    depths = {}
+    
+    for node in g.nodes():
+        path = nx.shortest_path_length(g,node)
+        if "cell" not in path:
+            print('Celltype not in DAG: ', node)
+        else:
+            depth = path['cell']
+        depths[node] = depth
+    
+    return depths
+            
+
+def consensus_vote_ontology(adata, dag, pred_keys, save_key):
+    depths = calculate_depths(dag)
+    save_key_score = save_key + '_score'
+    
+    adata.obs[save_key] = 'na'
+    adata.obs[save_key_score] = 'na'
+    
+    for i, cell_name in enumerate(adata.obs_names):
+        if i % 5000==0:
+            print(i)
+
+        cell = adata[cell_name]
+
+        # make scores
+        nx.set_node_attributes(dag, 0, "score")
+
+        for k in pred_keys:
+            celltype = cell.obs[k][0]
+
+            if k == 'onclass_pred':
+                for node in nx.descendants(dag, celltype):
+                    dag.nodes[node]['score'] += 1
+
+            dag.nodes[celltype]['score'] +=1
+
+        max_node = None
+        max_score = 0
+        max_depth = 1e8
+
+        for node in dag.nodes(data='score'):
+            score = node[1]
+            celltype = node[0]
+            if score != 0:
+                if score > max_score:
+                    max_node = node
+                    max_score = score
+                    max_depth = depths[celltype]
+
+                if score == max_score:
+                    depth = depths[celltype]
+                    if depth > max_depth:
+                        max_node = node
+                        max_depth = depth
+                        max_score = score
+
+        cell_name = cell.obs_names[0]
+
+        adata.obs[save_key][cell_name] = max_node[0]
+        adata.obs[save_key_score][cell_name] = max_node[1]
+
+def make_ontology_dag(obofile, lowercase=True):
+    """
+    Returns ontology DAG from obofile
+    """
+    co = obonet.read_obo(obofile)
+    id_to_name = {id_: data.get('name') for id_, data in co.nodes(data=True)}
+    name_to_id = {data['name']: id_ for id_, data in co.nodes(data=True) if ('name' in data)}
+    
+    #get all node ids that are celltypes (start with CL)
+    cl_ids = {id_:True for name, id_ in name_to_id.items() if id_.startswith('CL:')}
+    
+    # make new empty graph
+    g = nx.MultiDiGraph()
+
+    # add all celltype nodes to graph
+    for node in co.nodes():
+        if node in cl_ids:
+            nodename = id_to_name[node]
+            g.add_node(nodename)
+    
+    # iterate over 
+    for node in co.nodes():
+        if node in cl_ids:
+            for child, parent, key in co.out_edges(node, keys=True):
+                if child.startswith('CL:') and parent.startswith('CL:') and key=='is_a':
+                    childname = id_to_name[child]
+                    parentname = id_to_name[parent]
+                    g.add_edge(childname, parentname, key=key)
+    
+    assert nx.is_directed_acyclic_graph(g) is True
+    
+    if lowercase:
+        mapping = {s:s.lower() for s in list(g.nodes)}
+        g = nx.relabel_nodes(g, mapping)
+    return g
