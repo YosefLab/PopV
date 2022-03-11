@@ -799,6 +799,8 @@ def run_onclass(
 
     _ = train_model.EmbedCellTypes(train_Y)
     model_path = "OnClass"
+    
+    # add on epsilon to avoid divide by zero errors
     train_X += epsilon
     test_X += epsilon
     corr_train_feature, corr_test_feature, corr_train_genes, corr_test_genes = train_model.ProcessTrainFeature(train_X, 
