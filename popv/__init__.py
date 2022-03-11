@@ -12,6 +12,7 @@ import scanpy as sc
 import scvi
 import seaborn as sns
 
+
 from OnClass.OnClassModel import OnClassModel
 
 from sklearn import svm
@@ -771,6 +772,7 @@ def run_onclass(
     max_iter=20,
     save_model="onclass_model",
     shard_size=50000,
+    epsilon=1.0
 ):
     celltype_dict, clid_2_name = make_celltype_to_cell_ontology_id_dict(cl_obo_file)
     cell_ontology_obs_key = make_cell_ontology_id(adata, labels_key, celltype_dict)
@@ -796,8 +798,9 @@ def run_onclass(
     test_adata = adata[test_idx]
 
     _ = train_model.EmbedCellTypes(train_Y)
-
     model_path = "OnClass"
+    train_X += epsilon
+    test_X += epsilon
     corr_train_feature, corr_test_feature, corr_train_genes, corr_test_genes = train_model.ProcessTrainFeature(train_X, 
                                                                                                            train_Y,
                                                                                                            train_genes,
