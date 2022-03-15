@@ -12,7 +12,6 @@ import scanpy as sc
 import scvi
 import seaborn as sns
 
-
 from OnClass.OnClassModel import OnClassModel
 
 from sklearn import svm
@@ -408,7 +407,7 @@ def process_query(
         query_adata.obs["_batch_annotation"] = query_batches + "_query"
     else:
         query_adata.obs["_batch_annotation"] = "query"
-
+    
     query_adata.obs["_dataset"] = "query"
     query_adata.obs["_ref_subsample"] = False
     query_adata.obs[ref_cell_ontology_key] = unknown_celltype_label
@@ -437,15 +436,14 @@ def process_query(
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
     sc.pp.scale(adata, max_value=10, zero_center=False)
-
-    n_top_genes = np.min((4000, query_adata.n_obs))
-    sc.pp.highly_variable_genes(
-        adata,
-        n_top_genes=n_top_genes,
-        subset=True,
-        layer="scvi_counts",
-        flavor="seurat_v3",
-    )
+    n_top_genes = np.min((4000, query_adata.n_vars))
+    # sc.pp.highly_variable_genes(
+    #     adata,
+    #     n_top_genes=n_top_genes,
+    #     subset=True,
+    #     layer="scvi_counts",
+    #     flavor="seurat_v3",
+    # )
     sc.tl.pca(adata)
     scvi.data.setup_anndata(
         adata,
@@ -453,10 +451,9 @@ def process_query(
         labels_key="_labels_annotation",
         layer="scvi_counts",
     )
-
     ref_query_results_fn = os.path.join(save_folder, "annotated_query_plus_ref.h5ad")
     anndata.concat((query_adata, ref_adata), join="outer").write(ref_query_results_fn)
-
+    
     query_results_fn = os.path.join(save_folder, "annotated_query.h5ad")
     query_adata.write(query_results_fn)
     return adata
