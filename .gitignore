@@ -2,7 +2,7 @@
 OnClass*
 popv_results/
 checkpoint
-
+popv_test_results/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

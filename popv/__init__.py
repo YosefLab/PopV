@@ -13,6 +13,7 @@ import scvi
 import seaborn as sns
 
 from OnClass.OnClassModel import OnClassModel
+import logging
 
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
@@ -369,7 +370,6 @@ def process_query(
 
     """
     # TODO add check that varnames are all unique
-    
     assert _check_nonnegative_integers(query_adata.X) == True
     assert _check_nonnegative_integers(ref_adata.X) == True
     
@@ -437,13 +437,13 @@ def process_query(
     sc.pp.log1p(adata)
     sc.pp.scale(adata, max_value=10, zero_center=False)
     n_top_genes = np.min((4000, query_adata.n_vars))
-    # sc.pp.highly_variable_genes(
-    #     adata,
-    #     n_top_genes=n_top_genes,
-    #     subset=True,
-    #     layer="scvi_counts",
-    #     flavor="seurat_v3",
-    # )
+    sc.pp.highly_variable_genes(
+        adata,
+        n_top_genes=n_top_genes,
+        subset=True,
+        layer="scvi_counts",
+        flavor="seurat_v3",
+    )
     sc.tl.pca(adata)
     scvi.data.setup_anndata(
         adata,
@@ -453,9 +453,14 @@ def process_query(
     )
     ref_query_results_fn = os.path.join(save_folder, "annotated_query_plus_ref.h5ad")
     anndata.concat((query_adata, ref_adata), join="outer").write(ref_query_results_fn)
-    
+    idx = [i[0] for i in np.argwhere(np.sum(adata.X.todense(), 1) == 0)]
+    zero_cell_names = adata[idx].obs.index
+    logging.warning(f'The following cells will be excluded from annotation because they have no expression: {zero_cell_names}') 
+    sc.pp.filter_cells(adata, min_counts = 1)
     query_results_fn = os.path.join(save_folder, "annotated_query.h5ad")
     query_adata.write(query_results_fn)
+    print (f'The following cells will be excluded from annotation because they have no expression: {zero_cell_names}') 
+
     return adata
 
 
@@ -756,7 +761,6 @@ def run_rf_on_hvg(
     adata.obs[save_key][test_idx] = rf_pred
 
 
-@try_method("Running OnClass")
 def run_onclass(
     adata,
     cl_obo_file,
@@ -768,8 +772,7 @@ def run_onclass(
     n_hidden=500,
     max_iter=20,
     save_model="onclass_model",
-    shard_size=50000,
-    epsilon=1.0
+    shard_size=50000
 ):
     celltype_dict, clid_2_name = make_celltype_to_cell_ontology_id_dict(cl_obo_file)
     cell_ontology_obs_key = make_cell_ontology_id(adata, labels_key, celltype_dict)
@@ -797,9 +800,7 @@ def run_onclass(
     _ = train_model.EmbedCellTypes(train_Y)
     model_path = "OnClass"
     
-    # add on epsilon to avoid divide by zero errors
-    train_X += epsilon
-    test_X += epsilon
+
     corr_train_feature, corr_test_feature, corr_train_genes, corr_test_genes = train_model.ProcessTrainFeature(train_X, 
                                                                                                            train_Y,
                                                                                                            train_genes,
