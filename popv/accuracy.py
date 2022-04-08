@@ -27,7 +27,14 @@ import matplotlib.backends.backend_pdf
 from numba import boolean, float32, float64, int32, int64, vectorize
 from collections import defaultdict
 
-from .accuracy import *
-from .visualization import *
-from .annotation import *
-from .utils import _check_nonnegative_integers
+from .utils import *
+
+
+def absolute_accuracy(adata, pred_key, gt_key, save_key=None):
+    pred = adata.obs[pred_key].str.lower()
+    gt = adata.obs[gt_key].str.lower()
+
+    acc = (pred==gt).astype(int)
+    if save_key is not None:
+        adata.obs[save_key] = acc
+    return acc
