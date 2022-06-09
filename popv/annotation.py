@@ -15,7 +15,6 @@ import seaborn as sns
 import string
 
 
-import alluvial
 
 from OnClass.OnClassModel import OnClassModel
 import logging
@@ -48,7 +47,8 @@ def process_query(
     pretrained_scvi_path=None,
     unknown_celltype_label="unknown",
     training_mode="online",
-    n_samples_per_label=100,
+    hvg = True,
+    n_samples_per_label=100
 ):
     """
     Processes the query dataset in preperation for the annotation pipeline.
@@ -89,6 +89,8 @@ def process_query(
         training_mode=='online' and all the genes in the pretrained models are present
         in query adata, will train the scARCHES version of scVI and scANVI, resulting in
         faster training times.
+    hvg
+        If True, subsets data to 4000 highly variable genes according to `sc.pp.highly_variable_genes`
 
     Returns
     -------
@@ -151,7 +153,7 @@ def process_query(
             query_adata.obs["_labels_annotation"] = unknown_celltype_label
     else:
         query_adata.obs["_labels_annotation"] = unknown_celltype_label
-
+            
     if training_mode == "online":
         query_adata = query_adata[:, ref_adata.var_names].copy()
         adata = anndata.concat((ref_adata, query_adata))
@@ -172,12 +174,19 @@ def process_query(
         flavor="seurat_v3",
     )
     sc.tl.pca(adata)
-    scvi.data.setup_anndata(
+    scvi.model.SCVI.setup_anndata(
         adata,
         batch_key="_batch_annotation",
         labels_key="_labels_annotation",
         layer="scvi_counts",
-    )
+    ) # CSV's obs names x prediction by method, scvi latent space, scanvi latent space
+    # Remove any 0 expression cells 
+    idx = [i[0] for i in np.argwhere(np.sum(adata.X.todense(), 1) == 0)]
+    zero_cell_names = adata[idx].obs.index
+    sc.pp.filter_cells(adata, min_counts = 1, inplace = True)
+
+    logging.warning(f'The following cells will be excluded from annotation because they have no expression:{zero_cell_names}, likely due to highly variable gene selection. We recommend you subset the data yourself and set hvg to False.')
+
     ref_query_results_fn = os.path.join(save_folder, "annotated_query_plus_ref.h5ad")
     anndata.concat((query_adata, ref_adata), join="outer").write(ref_query_results_fn)
     query_results_fn = os.path.join(save_folder, "annotated_query.h5ad")
@@ -270,19 +279,13 @@ def annotate_data(
 
     ref_query_results_fn = os.path.join(save_path, "annotated_query_plus_ref.h5ad")
     query_results_fn = os.path.join(save_path, "annotated_query.h5ad")
-    
-    # Remove any 0 expression cells 
-    sc.pp.filter_cells(adata, min_counts = 1)
-    idx = [i[0] for i in np.argwhere(np.sum(adata.X.todense(), 1) == 0)]
-    zero_cell_names = adata[idx].obs.index
-    logging.warning(f'The following cells will be excluded from annotation because they have no expression: {zero_cell_names}') 
-
-    
+        
     if "bbknn" in methods:
         run_bbknn(adata, batch_key="_batch_annotation")
         run_knn_on_bbknn(
             adata, labels_key="_labels_annotation", result_key="knn_on_bbknn_pred"
         )
+        
         save_results(
             adata,
             ref_query_results_fn,

@@ -14,7 +14,6 @@ import seaborn as sns
 import string
 
 
-import alluvial
 
 from OnClass.OnClassModel import OnClassModel
 import logging
