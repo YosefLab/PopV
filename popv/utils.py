@@ -286,14 +286,10 @@ def save_results(
         results = anndata.read(results_adata_path)
         for key in obs_keys:
             if key in adata.obs.keys():
-                results.obs[key] = 'na'
-                # results.obs[key] = adata[results.obs_names].obs[key]
-                results.obs[key].update(results.obs[key])
+                results.obs[key] = adata[results.obs_names].obs[key]
         for key in obsm_keys:
             if key in adata.obsm.keys():
-                results.obsm[key] = 'na'
-                # results.obsm[key] = adata[results.obs_names].obsm[key]
-                results.obsm[key].update(results.obsm[key])
+                results.obsm[key] = adata[results.obs_names].obsm[key]
         results.write(results_adata_path, compression)
     else:
         adata.write(results_adata_path, compression)
