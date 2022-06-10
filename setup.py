@@ -1,5 +1,3 @@
-
-
 from setuptools import setup, find_packages
 
 setup(
@@ -25,14 +23,14 @@ setup(
         "scvi-tools==0.16.3",
         "OnClass==1.2",
         "numpy==1.19.2",
-        "tensorflow==2.4.4",
+        "tensorflow==2.2.0",
         "importlib-metadata==1.7.0",
-        "tensorboard==2.9.1",
+        "tensorboard==2.2.2",
         "grpcio==1.32.0",
         "huggingface-hub==0.0.12",
         "tqdm==4.64.0",
         "six==1.15.0",
-        "typing-extensions==3.7.4.3"
+        "typing-extensions==4.2.0",
     ],
     packages=find_packages(),
     include_package_data=True,

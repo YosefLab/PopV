@@ -198,7 +198,7 @@ def run_svm_on_hvg(
     adata.obs[save_key][test_idx] = svm_pred
 
 
-@try_method("Running scVI")
+@try_method("Running scvi")
 def run_scvi(
     adata,
     n_latent=50,
@@ -214,6 +214,12 @@ def run_scvi(
     overwrite=True,
     save_anndata=False,
 ):
+    scvi.model.SCVI.setup_anndata(
+        adata,
+        batch_key="_batch_annotation",
+        labels_key="_labels_annotation",
+        layer="scvi_counts",
+    ) 
     training_mode = adata.uns["_training_mode"]
     if training_mode == "online" and pretrained_scvi_path is None:
         raise ValueError("online training but no pretrained_scvi_path passed in.")
@@ -242,9 +248,9 @@ def run_scvi(
 
     model.train(max_epochs=max_epochs, train_size=1.0, batch_size=batch_size)
 
-    # temporary scvi hack
-    tmp_mappings = adata.uns["_scvi"]["categorical_mappings"]["_scvi_labels"]
-    model.scvi_setup_dict_["categorical_mappings"]["_scvi_labels"] = tmp_mappings
+    # # temporary scvi hack
+    # tmp_mappings = adata.uns["_scvi"]["categorical_mappings"]["_scvi_labels"]
+    # model.scvi_setup_dict_["categorical_mappings"]["_scvi_labels"] = tmp_mappings
 
     adata.obsm[obsm_latent_key] = model.get_latent_representation(adata)
 
@@ -353,6 +359,13 @@ def run_scanvi(
     save_anndata=False,
     overwrite=True,
 ):
+    scvi.model.SCANVI.setup_anndata(
+        adata,
+        batch_key="_batch_annotation",
+        labels_key="_labels_annotation",
+        layer="scvi_counts",
+        unlabeled_category = unlabeled_category
+    ) 
     training_mode = adata.uns["_training_mode"]
     if training_mode == "online" and pretrained_scanvi_path is None:
         raise ValueError("online training but no pretrained_scvi_path passed in.")
@@ -368,7 +381,6 @@ def run_scanvi(
         )
         model = scvi.model.SCANVI(
             adata,
-            unlabeled_category=unlabeled_category,
             n_layers=n_layers,
             encode_covariates=True,
             dropout_rate=dropout_rate,

@@ -174,12 +174,7 @@ def process_query(
         flavor="seurat_v3",
     )
     sc.tl.pca(adata)
-    scvi.model.SCVI.setup_anndata(
-        adata,
-        batch_key="_batch_annotation",
-        labels_key="_labels_annotation",
-        layer="scvi_counts",
-    ) # CSV's obs names x prediction by method, scvi latent space, scanvi latent space
+    # CSV's obs names x prediction by method, scvi latent space, scanvi latent space
     # Remove any 0 expression cells 
     idx = [i[0] for i in np.argwhere(np.sum(adata.X.todense(), 1) == 0)]
     zero_cell_names = adata[idx].obs.index
@@ -274,7 +269,9 @@ def annotate_data(
     pretrained_scanvi_path=None,
     onclass_ontology_file="cl.ontology",
     onclass_obo_fp="cl.obo",
-    onclass_emb_fp="cl.ontology.nlp.emb"
+    onclass_emb_fp="cl.ontology.nlp.emb",
+    scvi_max_epochs = None,
+    scanvi_max_epochs = None,
 ):
     if not os.path.exists(save_path):
         os.mkdir(save_path)
@@ -307,7 +304,7 @@ def annotate_data(
 
         run_scvi(
             adata,
-            max_epochs=None,
+            max_epochs=scvi_max_epochs,
             n_latent=50,
             dropout_rate=0.1,
             dispersion="gene-batch",
@@ -335,7 +332,7 @@ def annotate_data(
         predictions_key = "scanvi_{}_pred".format(training_mode)
         run_scanvi(
             adata,
-            max_epochs=None,
+            max_epochs=scanvi_max_epochs,
             n_latent=100,
             dropout_rate=0.1,
             obsm_latent_key=obsm_latent_key,
@@ -407,10 +404,10 @@ def annotate_data(
     ]
 
     obs_keys = adata.obs.keys()
-    pred_keys = [key for key in obs_keys if key in all_prediction_keys]
+    pred_keys = [key for key in obs_keys if key in all_prediction_keys] # should this be all_prediction_keys or methods?
     
     compute_consensus(adata, pred_keys)
-    ontology_vote_onclass(adata, obofile, "ontology_prediction")
+    ontology_vote_onclass(adata, onclass_obo_fp, "ontology_prediction", pred_keys)
 
     save_results(
         adata,
@@ -423,26 +420,24 @@ def annotate_data(
         query_results_fn,
         obs_keys=["consensus_prediction", "consensus_percentage"],
     )
+    # CSV's obs names x prediction by method, scvi latent space, scanvi latent space
+    adata[adata.obs._dataset=="query"].obs[pred_keys + ["consensus_prediction","consensus_percentage", "ontology_prediction"]].to_csv(os.path.join(save_path,"predictions.csv"))
+    np.savetxt(os.path.join(save_path,"scvi_latent.csv"), adata.obsm[scvi_obsm_latent_key], delimiter=",")
+    np.savetxt(os.path.join(save_path,"scanvi_latent.csv"), adata.obsm[obsm_latent_key], delimiter=",")
+    
 
 
 
-def ontology_vote_onclass(adata, obofile, save_key):
+def ontology_vote_onclass(adata, obofile, save_key, pred_keys):
     '''
     Compute prediction using ontology aggregation method.
     '''
     G = make_ontology_dag(obofile)
-    pred_keys = ['knn_on_bbknn_pred',
-                 'knn_on_scvi_offline_pred',
-                 'scanvi_offline_pred',
-                 'svm_pred',
-                 'rf_pred',
-                 'onclass_pred',
-                 'knn_on_scanorama_pred']
     
     name_to_id = {data['name'].lower(): id_ for id_, data in G.nodes(data=True) if ('name' in data)}
     cell_type_root_to_node = {}
     aggregate_ontology_pred = []
-    depths = {}
+    depths = {"cell":0}
     scores = []
     for cell in adata.obs.index:
         score = defaultdict(lambda: 0)
