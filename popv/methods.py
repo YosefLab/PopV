@@ -1,30 +1,26 @@
+import logging
 import os
-import obonet
+import string
+from collections import defaultdict
 
 import anndata
+import matplotlib.backends.backend_pdf
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 import networkx as nx
-import scipy.sparse as sp_sparse
+import numpy as np
+import obonet
+import pandas as pd
 import scanorama
 import scanpy as sc
+import scipy.sparse as sp_sparse
 import scvi
 import seaborn as sns
-import string
-
-
-
+from numba import boolean, float32, float64, int32, int64, vectorize
 from OnClass.OnClassModel import OnClassModel
-import logging
-
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import KNeighborsClassifier
-import matplotlib.backends.backend_pdf
-from numba import boolean, float32, float64, int32, int64, vectorize
-from collections import defaultdict
 
 from .utils import *
 
@@ -112,7 +108,7 @@ def run_onclass(
     n_hidden=500,
     max_iter=20,
     save_model="onclass_model",
-    shard_size=50000
+    shard_size=50000,
 ):
     celltype_dict, clid_2_name = make_celltype_to_cell_ontology_id_dict(cl_obo_file)
     cell_ontology_obs_key = make_cell_ontology_id(adata, labels_key, celltype_dict)
@@ -139,18 +135,26 @@ def run_onclass(
 
     _ = train_model.EmbedCellTypes(train_Y)
     model_path = "OnClass"
-    
 
-    corr_train_feature, corr_test_feature, corr_train_genes, corr_test_genes = train_model.ProcessTrainFeature(train_X, train_Y, train_genes, test_feature=test_X, test_genes=test_genes)
+    (
+        corr_train_feature,
+        corr_test_feature,
+        corr_train_genes,
+        corr_test_genes,
+    ) = train_model.ProcessTrainFeature(
+        train_X, train_Y, train_genes, test_feature=test_X, test_genes=test_genes
+    )
     train_model.BuildModel(ngene=len(corr_train_genes))
-    
+
     train_model.Train(
         corr_train_feature, train_Y, save_model=model_path, max_iter=max_iter
     )
 
     test_adata.obs[save_key] = "na"
-    
-    corr_test_feature = train_model.ProcessTestFeature(corr_test_feature, corr_test_genes, use_pretrain = model_path, log_transform = False)
+
+    corr_test_feature = train_model.ProcessTestFeature(
+        corr_test_feature, corr_test_genes, use_pretrain=model_path, log_transform=False
+    )
 
     if test_adata.n_obs > shard_size:
         for i in range(0, test_adata.n_obs, shard_size):
@@ -215,7 +219,7 @@ def run_scvi(
         batch_key="_batch_annotation",
         labels_key="_labels_annotation",
         layer="scvi_counts",
-    ) 
+    )
     training_mode = adata.uns["_training_mode"]
     if training_mode == "online" and pretrained_scvi_path is None:
         raise ValueError("online training but no pretrained_scvi_path passed in.")
@@ -256,7 +260,7 @@ def run_scvi(
     del adata.obsm["X_umap"]
 
     if save_folder is not None:
-        print ("Saving scvi model to ", save_folder)
+        print("Saving scvi model to ", save_folder)
         model.save(save_folder, overwrite=overwrite, save_anndata=save_anndata)
 
 
@@ -361,8 +365,8 @@ def run_scanvi(
         batch_key="_batch_annotation",
         labels_key="_labels_annotation",
         layer="scvi_counts",
-        unlabeled_category = unlabeled_category
-    ) 
+        unlabeled_category=unlabeled_category,
+    )
     training_mode = adata.uns["_training_mode"]
     if training_mode == "online" and pretrained_scanvi_path is None:
         raise ValueError("online training but no pretrained_scvi_path passed in.")
@@ -408,6 +412,5 @@ def run_scanvi(
     adata.obs[obs_pred_key] = model.predict(adata)
 
     if save_folder is not None:
-        print ("Saving scanvi model to ", save_folder)
+        print("Saving scanvi model to ", save_folder)
         model.save(save_folder, overwrite=overwrite, save_anndata=save_anndata)
-
