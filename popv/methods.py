@@ -141,13 +141,9 @@ def run_onclass(
     model_path = "OnClass"
     
 
-    corr_train_feature, corr_test_feature, corr_train_genes, corr_test_genes = train_model.ProcessTrainFeature(train_X, 
-                                                                                                           train_Y,
-                                                                                                           train_genes,
-                                                                                                           test_feature=test_X,
-                                                                                                           test_genes=test_genes)
-
+    corr_train_feature, corr_test_feature, corr_train_genes, corr_test_genes = train_model.ProcessTrainFeature(train_X, train_Y, train_genes, test_feature=test_X, test_genes=test_genes)
     train_model.BuildModel(ngene=len(corr_train_genes))
+    
     train_model.Train(
         corr_train_feature, train_Y, save_model=model_path, max_iter=max_iter
     )
@@ -260,6 +256,7 @@ def run_scvi(
     del adata.obsm["X_umap"]
 
     if save_folder is not None:
+        print ("Saving scvi model to ", save_folder)
         model.save(save_folder, overwrite=overwrite, save_anndata=save_anndata)
 
 
@@ -411,5 +408,6 @@ def run_scanvi(
     adata.obs[obs_pred_key] = model.predict(adata)
 
     if save_folder is not None:
+        print ("Saving scanvi model to ", save_folder)
         model.save(save_folder, overwrite=overwrite, save_anndata=save_anndata)
 

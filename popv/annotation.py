@@ -277,8 +277,7 @@ def annotate_data(
         os.mkdir(save_path)
 
     ref_query_results_fn = os.path.join(save_path, "annotated_query_plus_ref.h5ad")
-    query_results_fn = os.path.join(save_path, "annotated_query.h5ad")
-        
+    query_results_fn = os.path.join(save_path, "annotated_query.h5ad") 
     if "bbknn" in methods:
         run_bbknn(adata, batch_key="_batch_annotation")
         run_knn_on_bbknn(
@@ -325,6 +324,7 @@ def annotate_data(
             obs_keys=[knn_pred_key],
             obsm_keys=[scvi_obsm_latent_key, scvi_obsm_latent_key + "_umap"],
         )
+        np.savetxt(os.path.join(save_path,"scvi_latent.csv"), adata.obsm[scvi_obsm_latent_key], delimiter=",")
 
     if "scanvi" in methods:
         training_mode = adata.uns["_training_mode"]
@@ -352,6 +352,8 @@ def annotate_data(
             obs_keys=[predictions_key],
             obsm_keys=[obsm_latent_key],
         )
+        np.savetxt(os.path.join(save_path,"scanvi_latent.csv"), adata.obsm[obsm_latent_key], delimiter=",")
+
     if "svm" in methods:
         run_svm_on_hvg(adata)
         save_results(adata, ref_query_results_fn, obs_keys=["svm_pred"])
@@ -420,10 +422,11 @@ def annotate_data(
         query_results_fn,
         obs_keys=["consensus_prediction", "consensus_percentage"],
     )
+    print ("Final annotated query plus ref saved at ", ref_query_results_fn)
+    print ("Final annotated query saved at ", query_results_fn)   
+    
     # CSV's obs names x prediction by method, scvi latent space, scanvi latent space
     adata[adata.obs._dataset=="query"].obs[pred_keys + ["consensus_prediction","consensus_percentage", "ontology_prediction"]].to_csv(os.path.join(save_path,"predictions.csv"))
-    np.savetxt(os.path.join(save_path,"scvi_latent.csv"), adata.obsm[scvi_obsm_latent_key], delimiter=",")
-    np.savetxt(os.path.join(save_path,"scanvi_latent.csv"), adata.obsm[obsm_latent_key], delimiter=",")
     
 
 
@@ -433,8 +436,6 @@ def ontology_vote_onclass(adata, obofile, save_key, pred_keys):
     Compute prediction using ontology aggregation method.
     '''
     G = make_ontology_dag(obofile)
-    
-    name_to_id = {data['name'].lower(): id_ for id_, data in G.nodes(data=True) if ('name' in data)}
     cell_type_root_to_node = {}
     aggregate_ontology_pred = []
     depths = {"cell":0}
