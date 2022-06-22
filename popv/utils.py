@@ -1,30 +1,27 @@
+import logging
 import os
-import obonet
+import string
+from collections import defaultdict
 
 import anndata
+import matplotlib.backends.backend_pdf
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 import networkx as nx
-import scipy.sparse as sp_sparse
+import numpy as np
+import obonet
+import pandas as pd
 import scanorama
 import scanpy as sc
+import scipy.sparse as sp_sparse
 import scvi
 import seaborn as sns
-import string
-
-
-
+from numba import boolean, float32, float64, int32, int64, vectorize
 from OnClass.OnClassModel import OnClassModel
-import logging
-
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import KNeighborsClassifier
-import matplotlib.backends.backend_pdf
-from numba import boolean, float32, float64, int32, int64, vectorize
-from collections import defaultdict
+
 
 def make_cell_ontology_id(adata, labels_key, celltype_dict, ontology_key=None):
     """
@@ -82,6 +79,7 @@ def make_celltype_to_cell_ontology_id_dict(obo_file):
 
     return name2id, id2name
 
+
 def get_pretrained_model_genes(scvi_model_path):
     """
     Get the genes used to train a saved scVI model
@@ -99,6 +97,8 @@ def get_pretrained_model_genes(scvi_model_path):
     varnames_path = os.path.join(scvi_model_path, "var_names.csv")
     var_names = np.genfromtxt(varnames_path, delimiter=",", dtype=str)
     return var_names
+
+
 def try_method(log_message):
     """
     Decorator which will except an Exception if it failed.
@@ -116,6 +116,7 @@ def try_method(log_message):
         return wrapper
 
     return try_except
+
 
 def subsample_dataset(
     adata,
@@ -169,6 +170,7 @@ def subsample_dataset(
     sample_idx = np.concatenate(sample_idx)
     return adata.obs_names[sample_idx]
 
+
 def check_genes_is_subset(ref_genes, query_genes):
     """
     Check whether query_genes is a subset of ref_genes.
@@ -198,7 +200,6 @@ def check_genes_is_subset(ref_genes, query_genes):
     return is_subset
 
 
-
 def make_batch_covariate(adata, batch_keys, new_batch_key):
     """
     Combines all the batches in batch_keys into a single batch.
@@ -216,6 +217,7 @@ def make_batch_covariate(adata, batch_keys, new_batch_key):
         v1 = adata.obs[new_batch_key].values
         v2 = adata.obs[key].values
         adata.obs[new_batch_key] = [a + b for a, b in zip(v1, v2)]
+
 
 @vectorize(
     [
@@ -247,19 +249,19 @@ def _check_nonnegative_integers(data):
     check = data.flat[inds]
     return ~np.any(_is_not_count(check))
 
+
 def calculate_depths(g):
     depths = {}
-    
-    for node in g.nodes():
-        path = nx.shortest_path_length(g,node)
-        if "cell" not in path:
-            print('Celltype not in DAG: ', node)
-        else:
-            depth = path['cell']
-        depths[node] = depth
-    
-    return depths
 
+    for node in g.nodes():
+        path = nx.shortest_path_length(g, node)
+        if "cell" not in path:
+            print("Celltype not in DAG: ", node)
+        else:
+            depth = path["cell"]
+        depths[node] = depth
+
+    return depths
 
 
 def save_results(
@@ -293,20 +295,21 @@ def save_results(
         results.write(results_adata_path, compression)
     else:
         adata.write(results_adata_path, compression)
-        
-        
-        
+
+
 def make_ontology_dag(obofile, lowercase=True):
     """
     Returns ontology DAG from obofile
     """
     co = obonet.read_obo(obofile)
-    id_to_name = {id_: data.get('name') for id_, data in co.nodes(data=True)}
-    name_to_id = {data['name']: id_ for id_, data in co.nodes(data=True) if ('name' in data)}
-    
-    #get all node ids that are celltypes (start with CL)
-    cl_ids = {id_:True for name, id_ in name_to_id.items() if id_.startswith('CL:')}
-    
+    id_to_name = {id_: data.get("name") for id_, data in co.nodes(data=True)}
+    name_to_id = {
+        data["name"]: id_ for id_, data in co.nodes(data=True) if ("name" in data)
+    }
+
+    # get all node ids that are celltypes (start with CL)
+    cl_ids = {id_: True for name, id_ in name_to_id.items() if id_.startswith("CL:")}
+
     # make new empty graph
     g = nx.MultiDiGraph()
 
@@ -315,19 +318,23 @@ def make_ontology_dag(obofile, lowercase=True):
         if node in cl_ids:
             nodename = id_to_name[node]
             g.add_node(nodename)
-    
-    # iterate over 
+
+    # iterate over
     for node in co.nodes():
         if node in cl_ids:
             for child, parent, key in co.out_edges(node, keys=True):
-                if child.startswith('CL:') and parent.startswith('CL:') and key=='is_a':
+                if (
+                    child.startswith("CL:")
+                    and parent.startswith("CL:")
+                    and key == "is_a"
+                ):
                     childname = id_to_name[child]
                     parentname = id_to_name[parent]
                     g.add_edge(childname, parentname, key=key)
-    
+
     assert nx.is_directed_acyclic_graph(g) is True
-    
+
     if lowercase:
-        mapping = {s:s.lower() for s in list(g.nodes)}
+        mapping = {s: s.lower() for s in list(g.nodes)}
         g = nx.relabel_nodes(g, mapping)
     return g
