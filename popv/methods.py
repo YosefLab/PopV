@@ -43,9 +43,7 @@ def run_bbknn(adata, batch_key="_batch"):
         set_op_mix_ratio=1.0,
         local_connectivity=1,
     )
-    sc.tl.umap(adata)
-    adata.obsm["bbknn_umap"] = adata.obsm["X_umap"]
-    del adata.obsm["X_umap"]
+    adata.obsm["bbknn_umap"] = sc.tl.umap(adata, maxiter=1500, copy=True).obsm['X_umap']
     return adata
 
 
@@ -66,7 +64,7 @@ def run_knn_on_bbknn(
     train_y = adata[ref_idx].obs[labels_key].to_numpy()
     train_distances = distances[ref_dist_idx, :][:, ref_dist_idx]
 
-    knn = KNeighborsClassifier(n_neighbors=2, metric="precomputed")
+    knn = KNeighborsClassifier(n_neighbors=5, metric="precomputed", weights='uniform')
     knn.fit(train_distances, y=train_y)
 
     test_distances = distances[query_dist_idx, :][:, ref_dist_idx]
@@ -83,7 +81,7 @@ def run_rf_on_hvg(
     adata,
     labels_key="_labels_annotation",
     save_key="rf_pred",
-    layers_key="scvi_counts",
+    layers_key="logcounts",
 ):
     train_idx = adata.obs["_ref_subsample"]
     test_idx = adata.obs["_dataset"] == "query"
@@ -91,16 +89,17 @@ def run_rf_on_hvg(
     train_x = adata[train_idx].layers[layers_key]
     train_y = adata[train_idx].obs[labels_key].to_numpy()
     test_x = adata[test_idx].layers[layers_key]
-
+    
     print("Training random forest classifier with {} cells".format(len(train_y)))
-    rf = RandomForestClassifier()
+    n_features = np.max([200., np.sqrt(2000.)]).astype(int)
+    rf = RandomForestClassifier(class_weight='balanced_subsample', max_features=n_features)
     rf.fit(train_x, train_y)
     rf_pred = rf.predict(test_x)
 
     adata.obs[save_key] = adata.obs[labels_key]
     adata.obs[save_key][test_idx] = rf_pred
 
-
+@try_method("Classifying with onclass")
 def run_onclass(
     adata,
     cl_obo_file,
@@ -170,13 +169,12 @@ def run_onclass(
 
     return adata
 
-
 @try_method("Classifying with SVM")
 def run_svm_on_hvg(
     adata,
     labels_key="_labels_annotation",
     save_key="svm_pred",
-    layers_key="scvi_counts",
+    layers_key="logcounts",
 ):
     train_idx = adata.obs["_ref_subsample"]
     test_idx = adata.obs["_dataset"] == "query"
@@ -185,9 +183,9 @@ def run_svm_on_hvg(
     train_y = adata[train_idx].obs[labels_key].to_numpy()
     test_x = adata[test_idx].layers[layers_key]
 
-    clf = svm.LinearSVC(max_iter=1000)
+    clf = svm.LinearSVC(max_iter=5000, class_weight='balanced')
     clf.fit(train_x, train_y)
-    svm_pred = clf.predict(test_x)
+    svm_pred = clf.predict(test_x, )
 
     # save_results
     adata.obs[save_key] = adata.obs[labels_key]
@@ -198,11 +196,11 @@ def run_svm_on_hvg(
 def run_scvi(
     adata,
     n_latent=50,
-    n_layers=3,
+    n_layers=2,
     dropout_rate=0.1,
-    dispersion="gene",
+    dispersion="gene-batch",
     max_epochs=None,
-    batch_size=1024,
+    batch_size=256,
     pretrained_scvi_path=None,
     var_subset_type="inner_join",
     obsm_latent_key="X_scvi",
@@ -251,14 +249,11 @@ def run_scvi(
     adata.obsm[obsm_latent_key] = model.get_latent_representation(adata)
 
     sc.pp.neighbors(adata, use_rep=obsm_latent_key)
-    sc.tl.umap(adata)
-    adata.obsm[obsm_latent_key + "_umap"] = adata.obsm["X_umap"]
-    del adata.obsm["X_umap"]
+    adata.obsm[obsm_latent_key + "_umap"] = sc.tl.umap(adata, min_dist=0.01, maxiter=1500, copy=True).obsm['X_umap']
 
     if save_folder is not None:
         print ("Saving scvi model to ", save_folder)
         model.save(save_folder, overwrite=overwrite, save_anndata=save_anndata)
-
 
 @try_method("Classifying with knn on scVI latent space")
 def run_knn_on_scvi(
@@ -331,22 +326,22 @@ def run_scanorama(adata, batch_key="_batch"):
 
     print("Computing umap on scanorama")
     sc.pp.neighbors(adata, use_rep="X_scanorama")
-    sc.tl.umap(adata)
-    adata.obsm["scanorama_umap"] = adata.obsm["X_umap"]
-    del adata.obsm["X_umap"]
+    sc.tl.umap(adata, maxiter=1500)
+    adata.obsm["scanorama_umap"] = sc.tl.umap(adata, min_dist=0.01, maxiter=1500, copy=True).obsm['X_umap']
 
 
 @try_method("Running scANVI")
 def run_scanvi(
     adata,
     unlabeled_category="unknown",
-    n_layers=3,
-    dropout_rate=0.2,
+    n_layers=2,
+    dropout_rate=0.1,
     n_classifier_layers=1,
     classifier_dropout=0.4,
     max_epochs=None,
-    n_latent=100,
-    batch_size=1024,
+    n_latent=50,
+    batch_size=256,
+    dispersion='gene-batch',
     n_epochs_kl_warmup=20,
     n_samples_per_label=100,
     obsm_latent_key="X_scanvi",
@@ -369,6 +364,7 @@ def run_scanvi(
 
     if training_mode == "offline":
         model_kwargs = dict(
+            dispersion=dispersion,
             use_layer_norm="both",
             use_batch_norm="none",
             classifier_parameters={

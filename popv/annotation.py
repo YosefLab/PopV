@@ -125,7 +125,7 @@ def process_query(
         n_samples_per_label=n_samples_per_label,
         ignore_label=[unknown_celltype_label],
     )
-    ref_adata.obs["_ref_subsample"][ref_subsample_idx] = True
+    ref_adata.obs.loc[ref_subsample_idx, "_ref_subsample"] = True
 
     if isinstance(query_batch_key, list):
         make_batch_covariate(query_adata, query_batch_key, new_batch_key='_batch_annotation')
@@ -164,6 +164,7 @@ def process_query(
 
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
+    adata.layers['logcounts'] = adata.X.copy()
     sc.pp.scale(adata, max_value=10, zero_center=False)
     n_top_genes = np.min((4000, query_adata.n_vars))
     sc.pp.highly_variable_genes(
@@ -333,8 +334,9 @@ def annotate_data(
         run_scanvi(
             adata,
             max_epochs=scanvi_max_epochs,
-            n_latent=100,
+            n_latent=50,
             dropout_rate=0.1,
+            dispersion='gene-batch',
             obsm_latent_key=obsm_latent_key,
             obs_pred_key=predictions_key,
             pretrained_scanvi_path=pretrained_scanvi_path,
@@ -367,7 +369,7 @@ def annotate_data(
     if "onclass" in methods:
         run_onclass(
             adata=adata,
-            layer="scvi_counts",
+            layer="logcounts",
             max_iter=20,
             cl_obo_file=onclass_obo_fp,
             cl_ontology_file=onclass_ontology_file,
