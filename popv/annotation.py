@@ -1,37 +1,33 @@
+import functools
+import logging
 import os
-import obonet
+import string
+from collections import defaultdict
 
 import anndata
+import matplotlib.backends.backend_pdf
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
 import networkx as nx
-import functools
-import scipy.sparse as sp_sparse
+import numpy as np
+import obonet
+import pandas as pd
 import scanorama
 import scanpy as sc
+import scipy.sparse as sp_sparse
 import scvi
 import seaborn as sns
-import string
-
-
-
+from numba import boolean, float32, float64, int32, int64, vectorize
 from OnClass.OnClassModel import OnClassModel
-import logging
-
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import KNeighborsClassifier
-import matplotlib.backends.backend_pdf
-from numba import boolean, float32, float64, int32, int64, vectorize
-from collections import defaultdict
 
-from .utils import *
-from .methods import *
 from .accuracy import *
-from .visualization import sample_report
+from .methods import *
+from .utils import *
 from .utils import _check_nonnegative_integers
+from .visualization import sample_report
 
 
 def process_query(
@@ -47,8 +43,8 @@ def process_query(
     pretrained_scvi_path=None,
     unknown_celltype_label="unknown",
     training_mode="online",
-    hvg = True,
-    n_samples_per_label=100
+    hvg=True,
+    n_samples_per_label=100,
 ):
     """
     Processes the query dataset in preperation for the annotation pipeline.
@@ -101,7 +97,7 @@ def process_query(
     # TODO add check that varnames are all unique
     assert _check_nonnegative_integers(query_adata.X) == True
     assert _check_nonnegative_integers(ref_adata.X) == True
-    
+
     if query_adata.n_obs == 0:
         raise ValueError("Input query anndata has no cells.")
 
@@ -109,14 +105,16 @@ def process_query(
         os.mkdir(save_folder)
 
     if isinstance(ref_batch_key, list):
-        make_batch_covariate(ref_adata, ref_batch_key, new_batch_key='_batch_annotation')
+        make_batch_covariate(
+            ref_adata, ref_batch_key, new_batch_key="_batch_annotation"
+        )
     else:
         ref_adata.obs["_batch_annotation"] = ref_adata.obs[ref_batch_key]
-        
+
     ref_adata.obs["_labels_annotation"] = ref_adata.obs[ref_labels_key]
     ref_adata.obs["_dataset"] = "ref"
     ref_adata.layers["scvi_counts"] = ref_adata.X
-    
+
     # subsample the reference cells used for training certain models
     ref_adata.obs["_ref_subsample"] = False
     ref_subsample_idx = subsample_dataset(
@@ -125,18 +123,20 @@ def process_query(
         n_samples_per_label=n_samples_per_label,
         ignore_label=[unknown_celltype_label],
     )
-    ref_adata.obs["_ref_subsample"][ref_subsample_idx] = True
+    ref_adata.obs.loc[ref_subsample_idx, "_ref_subsample"] = True
 
     if isinstance(query_batch_key, list):
-        make_batch_covariate(query_adata, query_batch_key, new_batch_key='_batch_annotation')
-        query_batches = query_adata.obs['_batch_annotation'].astype("str")
+        make_batch_covariate(
+            query_adata, query_batch_key, new_batch_key="_batch_annotation"
+        )
+        query_batches = query_adata.obs["_batch_annotation"].astype("str")
         query_adata.obs["_batch_annotation"] = query_batches + "_query"
     elif query_batch_key is not None:
         query_batches = query_adata.obs[query_batch_key].astype("str")
         query_adata.obs["_batch_annotation"] = query_batches + "_query"
     else:
         query_adata.obs["_batch_annotation"] = "query"
-    
+
     query_adata.obs["_dataset"] = "query"
     query_adata.obs["_ref_subsample"] = False
     query_adata.obs[ref_cell_ontology_key] = unknown_celltype_label
@@ -153,7 +153,7 @@ def process_query(
             query_adata.obs["_labels_annotation"] = unknown_celltype_label
     else:
         query_adata.obs["_labels_annotation"] = unknown_celltype_label
-            
+
     if training_mode == "online":
         query_adata = query_adata[:, ref_adata.var_names].copy()
         adata = anndata.concat((ref_adata, query_adata))
@@ -164,6 +164,7 @@ def process_query(
 
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
+    adata.layers['logcounts'] = adata.X.copy()
     sc.pp.scale(adata, max_value=10, zero_center=False)
     n_top_genes = np.min((4000, query_adata.n_vars))
     sc.pp.highly_variable_genes(
@@ -175,12 +176,14 @@ def process_query(
     )
     sc.tl.pca(adata)
     # CSV's obs names x prediction by method, scvi latent space, scanvi latent space
-    # Remove any 0 expression cells 
+    # Remove any 0 expression cells
     idx = [i[0] for i in np.argwhere(np.sum(adata.X.todense(), 1) == 0)]
     zero_cell_names = adata[idx].obs.index
-    sc.pp.filter_cells(adata, min_counts = 1, inplace = True)
+    sc.pp.filter_cells(adata, min_counts=1, inplace=True)
 
-    logging.warning(f'The following cells will be excluded from annotation because they have no expression:{zero_cell_names}, likely due to highly variable gene selection. We recommend you subset the data yourself and set hvg to False.')
+    logging.warning(
+        f"The following cells will be excluded from annotation because they have no expression:{zero_cell_names}, likely due to highly variable gene selection. We recommend you subset the data yourself and set hvg to False."
+    )
 
     ref_query_results_fn = os.path.join(save_folder, "annotated_query_plus_ref.h5ad")
     # anndata.concat((query_adata, ref_adata), join="outer").write(ref_query_results_fn)
@@ -225,6 +228,7 @@ def prediction_eval(
     pdf.close()
     return plt.figure(1)
 
+
 def compute_consensus(adata, prediction_keys):
     """
     Computes consensus prediction and statistics between all methods.
@@ -247,8 +251,6 @@ def compute_consensus(adata, prediction_keys):
     agreement = adata.obs[prediction_keys].apply(majority_count, axis=1)
     agreement *= 100
     adata.obs["consensus_percentage"] = agreement.values.round(2).astype(str)
-    
-
 
 
 def majority_vote(x):
@@ -270,20 +272,20 @@ def annotate_data(
     onclass_ontology_file="cl.ontology",
     onclass_obo_fp="cl.obo",
     onclass_emb_fp="cl.ontology.nlp.emb",
-    scvi_max_epochs = None,
-    scanvi_max_epochs = None,
+    scvi_max_epochs=None,
+    scanvi_max_epochs=None,
 ):
     if not os.path.exists(save_path):
         os.mkdir(save_path)
 
     ref_query_results_fn = os.path.join(save_path, "annotated_query_plus_ref.h5ad")
-    query_results_fn = os.path.join(save_path, "annotated_query.h5ad") 
+    query_results_fn = os.path.join(save_path, "annotated_query.h5ad")
     if "bbknn" in methods:
         run_bbknn(adata, batch_key="_batch_annotation")
         run_knn_on_bbknn(
             adata, labels_key="_labels_annotation", result_key="knn_on_bbknn_pred"
         )
-        
+
         save_results(
             adata,
             ref_query_results_fn,
@@ -324,7 +326,11 @@ def annotate_data(
             obs_keys=[knn_pred_key],
             obsm_keys=[scvi_obsm_latent_key, scvi_obsm_latent_key + "_umap"],
         )
-        np.savetxt(os.path.join(save_path,"scvi_latent.csv"), adata.obsm[scvi_obsm_latent_key], delimiter=",")
+        np.savetxt(
+            os.path.join(save_path, "scvi_latent.csv"),
+            adata.obsm[scvi_obsm_latent_key],
+            delimiter=",",
+        )
 
     if "scanvi" in methods:
         training_mode = adata.uns["_training_mode"]
@@ -333,8 +339,9 @@ def annotate_data(
         run_scanvi(
             adata,
             max_epochs=scanvi_max_epochs,
-            n_latent=100,
+            n_latent=50,
             dropout_rate=0.1,
+            dispersion='gene-batch',
             obsm_latent_key=obsm_latent_key,
             obs_pred_key=predictions_key,
             pretrained_scanvi_path=pretrained_scanvi_path,
@@ -352,7 +359,11 @@ def annotate_data(
             obs_keys=[predictions_key],
             obsm_keys=[obsm_latent_key],
         )
-        np.savetxt(os.path.join(save_path,"scanvi_latent.csv"), adata.obsm[obsm_latent_key], delimiter=",")
+        np.savetxt(
+            os.path.join(save_path, "scanvi_latent.csv"),
+            adata.obsm[obsm_latent_key],
+            delimiter=",",
+        )
 
     if "svm" in methods:
         run_svm_on_hvg(adata)
@@ -367,7 +378,7 @@ def annotate_data(
     if "onclass" in methods:
         run_onclass(
             adata=adata,
-            layer="scvi_counts",
+            layer="logcounts",
             max_iter=20,
             cl_obo_file=onclass_obo_fp,
             cl_ontology_file=onclass_ontology_file,
@@ -406,8 +417,10 @@ def annotate_data(
     ]
 
     obs_keys = adata.obs.keys()
-    pred_keys = [key for key in obs_keys if key in all_prediction_keys] # should this be all_prediction_keys or methods?
-    
+    pred_keys = [
+        key for key in obs_keys if key in all_prediction_keys
+    ]  # should this be all_prediction_keys or methods?
+
     compute_consensus(adata, pred_keys)
     ontology_vote_onclass(adata, onclass_obo_fp, "ontology_prediction", pred_keys)
 
@@ -416,33 +429,34 @@ def annotate_data(
         ref_query_results_fn,
         obs_keys=["consensus_prediction", "consensus_percentage"],
     )
-    
+
     save_results(
         adata,
         query_results_fn,
         obs_keys=["consensus_prediction", "consensus_percentage"],
     )
-    print ("Final annotated query plus ref saved at ", ref_query_results_fn)
-    print ("Final annotated query saved at ", query_results_fn)   
-    
-    # CSV's obs names x prediction by method, scvi latent space, scanvi latent space
-    adata[adata.obs._dataset=="query"].obs[pred_keys + ["consensus_prediction","consensus_percentage", "ontology_prediction"]].to_csv(os.path.join(save_path,"predictions.csv"))
-    
+    print("Final annotated query plus ref saved at ", ref_query_results_fn)
+    print("Final annotated query saved at ", query_results_fn)
 
+    # CSV's obs names x prediction by method, scvi latent space, scanvi latent space
+    adata[adata.obs._dataset == "query"].obs[
+        pred_keys
+        + ["consensus_prediction", "consensus_percentage", "ontology_prediction"]
+    ].to_csv(os.path.join(save_path, "predictions.csv"))
 
 
 def ontology_vote_onclass(adata, obofile, save_key, pred_keys):
-    '''
+    """
     Compute prediction using ontology aggregation method.
-    '''
+    """
     G = make_ontology_dag(obofile)
     cell_type_root_to_node = {}
     aggregate_ontology_pred = []
-    depths = {"cell":0}
+    depths = {"cell": 0}
     scores = []
     for cell in adata.obs.index:
         score = defaultdict(lambda: 0)
-        score['cell'] = 0
+        score["cell"] = 0
         for pred_key in pred_keys:
             cell_type = adata.obs[pred_key][cell]
             if not pd.isna(cell_type):
@@ -455,13 +469,24 @@ def ontology_vote_onclass(adata, obofile, save_key, pred_keys):
                 if pred_key == "onclass_pred":
                     for ancestor_cell_type in root_to_node:
                         score[ancestor_cell_type] += 1
-                        depths[ancestor_cell_type] = len(nx.shortest_path(G, ancestor_cell_type, 'cell'))
-                depths[cell_type] = len(nx.shortest_path(G, cell_type, 'cell'))
+                        depths[ancestor_cell_type] = len(
+                            nx.shortest_path(G, ancestor_cell_type, "cell")
+                        )
+                depths[cell_type] = len(nx.shortest_path(G, cell_type, "cell"))
                 score[cell_type] += 1
-        aggregate_ontology_pred.append(max(score, key = lambda k: (score[k], depths[k], 26 - string.ascii_lowercase.index(cell_type[0]))))
+        aggregate_ontology_pred.append(
+            max(
+                score,
+                key=lambda k: (
+                    score[k],
+                    depths[k],
+                    26 - string.ascii_lowercase.index(cell_type[0]),
+                ),
+            )
+        )
         scores.append(score[cell_type])
     adata.obs[save_key] = aggregate_ontology_pred
-    adata.obs[save_key  + "_score"] = scores
+    adata.obs[save_key + "_score"] = scores
     return adata
 
 
@@ -469,26 +494,31 @@ def deprecated(func):
     """This is a decorator which can be used to mark functions
     as deprecated. It will result in a warning being emitted
     when the function is used."""
+
     @functools.wraps(func)
     def new_func(*args, **kwargs):
-        warnings.simplefilter('always', DeprecationWarning)  # turn off filter
-        warnings.warn("Call to deprecated function {}.".format(func.__name__),
-                      category=DeprecationWarning,
-                      stacklevel=2)
-        warnings.simplefilter('default', DeprecationWarning)  # reset filter
+        warnings.simplefilter("always", DeprecationWarning)  # turn off filter
+        warnings.warn(
+            "Call to deprecated function {}.".format(func.__name__),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        warnings.simplefilter("default", DeprecationWarning)  # reset filter
         return func(*args, **kwargs)
+
     return new_func
+
 
 @deprecated
 def ontology_vote_onclass_old(adata, dag, pred_keys, save_key):
     depths = calculate_depths(dag)
-    save_key_score = save_key + '_score'
-    
-    adata.obs[save_key] = 'na'
-    adata.obs[save_key_score] = 'na'
-    
+    save_key_score = save_key + "_score"
+
+    adata.obs[save_key] = "na"
+    adata.obs[save_key_score] = "na"
+
     for i, cell_name in enumerate(adata.obs_names):
-        if i % 5000==0:
+        if i % 5000 == 0:
             print(i)
 
         cell = adata[cell_name]
@@ -499,17 +529,17 @@ def ontology_vote_onclass_old(adata, dag, pred_keys, save_key):
         for k in pred_keys:
             celltype = cell.obs[k][0]
 
-            if k == 'onclass_pred':
+            if k == "onclass_pred":
                 for node in nx.descendants(dag, celltype):
-                    dag.nodes[node]['score'] += 1
+                    dag.nodes[node]["score"] += 1
 
-            dag.nodes[celltype]['score'] +=1
+            dag.nodes[celltype]["score"] += 1
 
         max_node = None
         max_score = 0
         max_depth = 1e8
 
-        for node in dag.nodes(data='score'):
+        for node in dag.nodes(data="score"):
             score = node[1]
             celltype = node[0]
             if score != 0:
@@ -529,6 +559,3 @@ def ontology_vote_onclass_old(adata, dag, pred_keys, save_key):
 
         adata.obs[save_key][cell_name] = max_node[0]
         adata.obs[save_key_score][cell_name] = max_node[1]
-
-        
-                          
