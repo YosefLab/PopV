@@ -185,13 +185,13 @@ def process_query(
         f"The following cells will be excluded from annotation because they have no expression:{zero_cell_names}, likely due to highly variable gene selection. We recommend you subset the data yourself and set hvg to False."
     )
 
-    ref_query_results_fn = os.path.join(save_folder, "annotated_query_plus_ref.h5ad")
+    # ref_query_results_fn = os.path.join(save_folder, "annotated_query_plus_ref.h5ad")
     # anndata.concat((query_adata, ref_adata), join="outer").write(ref_query_results_fn)
-    adata.write(ref_query_results_fn)
+    # adata.write(ref_query_results_fn)
 
-    query_adata = adata[adata.obs._dataset == "query"]
-    query_results_fn = os.path.join(save_folder, "annotated_query.h5ad")
-    query_adata.write(query_results_fn)
+    # query_adata = adata[adata.obs._dataset == "query"]
+    # query_results_fn = os.path.join(save_folder, "annotated_query.h5ad")
+    # query_adata.write(query_results_fn)
     return adata
 
 
@@ -286,18 +286,18 @@ def annotate_data(
             adata, labels_key="_labels_annotation", result_key="knn_on_bbknn_pred"
         )
 
-        save_results(
-            adata,
-            ref_query_results_fn,
-            obs_keys=["knn_on_bbknn_pred"],
-            obsm_keys=["bbknn_umap"],
-        )
-        save_results(
-            adata,
-            query_results_fn,
-            obs_keys=["knn_on_bbknn_pred"],
-            obsm_keys=["bbknn_umap"],
-        )
+        # save_results(
+        #     adata,
+        #     ref_query_results_fn,
+        #     obs_keys=["knn_on_bbknn_pred"],
+        #     obsm_keys=["bbknn_umap"],
+        # )
+        # save_results(
+        #     adata,
+        #     query_results_fn,
+        #     obs_keys=["knn_on_bbknn_pred"],
+        #     obsm_keys=["bbknn_umap"],
+        # )
 
     if "scvi" in methods:
         training_mode = adata.uns["_training_mode"]
@@ -314,18 +314,19 @@ def annotate_data(
         )
         knn_pred_key = "knn_on_scvi_{}_pred".format(training_mode)
         run_knn_on_scvi(adata, obsm_key=scvi_obsm_latent_key, result_key=knn_pred_key)
-        save_results(
-            adata,
-            ref_query_results_fn,
-            obs_keys=[knn_pred_key],
-            obsm_keys=[scvi_obsm_latent_key, scvi_obsm_latent_key + "_umap"],
-        )
-        save_results(
-            adata,
-            query_results_fn,
-            obs_keys=[knn_pred_key],
-            obsm_keys=[scvi_obsm_latent_key, scvi_obsm_latent_key + "_umap"],
-        )
+
+        # save_results(
+        #     adata,
+        #     ref_query_results_fn,
+        #     obs_keys=[knn_pred_key],
+        #     obsm_keys=[scvi_obsm_latent_key, scvi_obsm_latent_key + "_umap"],
+        # )
+        # save_results(
+        #     adata,
+        #     query_results_fn,
+        #     obs_keys=[knn_pred_key],
+        #     obsm_keys=[scvi_obsm_latent_key, scvi_obsm_latent_key + "_umap"],
+        # )
         np.savetxt(
             os.path.join(save_path, "scvi_latent.csv"),
             adata.obsm[scvi_obsm_latent_key],
@@ -347,18 +348,18 @@ def annotate_data(
             pretrained_scanvi_path=pretrained_scanvi_path,
         )
 
-        save_results(
-            adata,
-            ref_query_results_fn,
-            obs_keys=[predictions_key],
-            obsm_keys=[obsm_latent_key],
-        )
-        save_results(
-            adata,
-            query_results_fn,
-            obs_keys=[predictions_key],
-            obsm_keys=[obsm_latent_key],
-        )
+        # save_results(
+        #     adata,
+        #     ref_query_results_fn,
+        #     obs_keys=[predictions_key],
+        #     obsm_keys=[obsm_latent_key],
+        # )
+        # save_results(
+        #     adata,
+        #     query_results_fn,
+        #     obs_keys=[predictions_key],
+        #     obsm_keys=[obsm_latent_key],
+        # )
         np.savetxt(
             os.path.join(save_path, "scanvi_latent.csv"),
             adata.obsm[obsm_latent_key],
@@ -367,13 +368,13 @@ def annotate_data(
 
     if "svm" in methods:
         run_svm_on_hvg(adata)
-        save_results(adata, ref_query_results_fn, obs_keys=["svm_pred"])
-        save_results(adata, query_results_fn, obs_keys=["svm_pred"])
+        # save_results(adata, ref_query_results_fn, obs_keys=["svm_pred"])
+        # save_results(adata, query_results_fn, obs_keys=["svm_pred"])
 
     if "rf" in methods:
         run_rf_on_hvg(adata)
-        save_results(adata, ref_query_results_fn, obs_keys=["rf_pred"])
-        save_results(adata, query_results_fn, obs_keys=["rf_pred"])
+        # save_results(adata, ref_query_results_fn, obs_keys=["rf_pred"])
+        # save_results(adata, query_results_fn, obs_keys=["rf_pred"])
 
     if "onclass" in methods:
         run_onclass(
@@ -384,24 +385,24 @@ def annotate_data(
             cl_ontology_file=onclass_ontology_file,
             nlp_emb_file=onclass_emb_fp,
         )
-        save_results(adata, ref_query_results_fn, obs_keys=["onclass_pred"])
-        save_results(adata, query_results_fn, obs_keys=["onclass_pred"])
+        # save_results(adata, ref_query_results_fn, obs_keys=["onclass_pred"])
+        # save_results(adata, query_results_fn, obs_keys=["onclass_pred"])
 
     if "scanorama" in methods:
         run_scanorama(adata, batch_key="_batch_annotation")
         run_knn_on_scanorama(adata)
-        save_results(
-            adata,
-            ref_query_results_fn,
-            obs_keys=["knn_on_scanorama_pred"],
-            obsm_keys=["scanorama_umap"],
-        )
-        save_results(
-            adata,
-            query_results_fn,
-            obs_keys=["knn_on_scanorama_pred"],
-            obsm_keys=["scanorama_umap"],
-        )
+        # save_results(
+        #     adata,
+        #     ref_query_results_fn,
+        #     obs_keys=["knn_on_scanorama_pred"],
+        #     obsm_keys=["scanorama_umap"],
+        # )
+        # save_results(
+        #     adata,
+        #     query_results_fn,
+        #     obs_keys=["knn_on_scanorama_pred"],
+        #     obsm_keys=["scanorama_umap"],
+        # )
 
     # Here we compute the consensus statistics
     all_prediction_keys = [
@@ -417,32 +418,35 @@ def annotate_data(
     ]
 
     obs_keys = adata.obs.keys()
-    pred_keys = [
-        key for key in obs_keys if key in all_prediction_keys
-    ]  # should this be all_prediction_keys or methods?
+
+    pred_keys = [key for key in all_prediction_keys if key in adata.obs.keys()]
 
     compute_consensus(adata, pred_keys)
     ontology_vote_onclass(adata, onclass_obo_fp, "ontology_prediction", pred_keys)
 
-    save_results(
-        adata,
-        ref_query_results_fn,
-        obs_keys=["consensus_prediction", "consensus_percentage"],
-    )
+    # save_results(
+    #     adata,
+    #     ref_query_results_fn,
+    #     obs_keys=["consensus_prediction", "consensus_percentage"],
+    # )
 
-    save_results(
-        adata,
-        query_results_fn,
-        obs_keys=["consensus_prediction", "consensus_percentage"],
-    )
-    print("Final annotated query plus ref saved at ", ref_query_results_fn)
-    print("Final annotated query saved at ", query_results_fn)
+    # save_results(
+    #     adata,
+    #     query_results_fn,
+    #     obs_keys=["consensus_prediction", "consensus_percentage"],
+    # )
+    # print("Final annotated query plus ref saved at ", ref_query_results_fn)
+    # print("Final annotated query saved at ", query_results_fn)
 
     # CSV's obs names x prediction by method, scvi latent space, scanvi latent space
+
+    prediction_save_path = os.path.join(save_path, "predictions.csv")
     adata[adata.obs._dataset == "query"].obs[
         pred_keys
         + ["consensus_prediction", "consensus_percentage", "ontology_prediction"]
-    ].to_csv(os.path.join(save_path, "predictions.csv"))
+    ].to_csv(prediction_save_path)
+
+    print(f'Predictions saved to {prediction_save_path}')
 
 
 def ontology_vote_onclass(adata, obofile, save_key, pred_keys):
