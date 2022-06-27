@@ -177,10 +177,9 @@ def process_query(
     idx = [i[0] for i in np.argwhere(np.sum(adata.X.todense(), 1) == 0)]
     zero_cell_names = adata[idx].obs.index
     sc.pp.filter_cells(adata, min_counts=1, inplace=True)
-
-    logging.warning(
-        f"The following cells will be excluded from annotation because they have no expression:{zero_cell_names}, likely due to highly variable gene selection. We recommend you subset the data yourself and set hvg to False."
-    )
+    if len(zero_cell_names) >0:
+        logging.warning(
+            f"The following cells will be excluded from annotation because they have no expression:{zero_cell_names}, likely due to highly variable gene selection. We recommend you subset the data yourself and set hvg to False.")
 
     # ref_query_results_fn = os.path.join(save_folder, "annotated_query_plus_ref.h5ad")
     # anndata.concat((query_adata, ref_adata), join="outer").write(ref_query_results_fn)
