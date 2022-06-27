@@ -188,6 +188,7 @@ def process_query(
     # query_adata = adata[adata.obs._dataset == "query"]
     # query_results_fn = os.path.join(save_folder, "annotated_query.h5ad")
     # query_adata.write(query_results_fn)
+    
     return adata
 
 
@@ -214,7 +215,7 @@ def compute_consensus(adata, prediction_keys):
     adata.obs["popv_majority_vote_prediction"] = consensus_prediction
 
     agreement = adata.obs[prediction_keys].apply(majority_count, axis=1)
-    agreement *= 100
+#     agreement *= 100
     adata.obs["popv_majority_vote_score"] = agreement.values.round(2).astype(str)
 
 
