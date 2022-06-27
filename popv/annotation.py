@@ -34,7 +34,6 @@ def process_query(
     query_adata,
     ref_adata,
     save_folder,
-    ref_adata_path,
     ref_labels_key,
     ref_batch_key="donor_method",
     ref_cell_ontology_key="final_annotation_cell_ontology_id",
@@ -56,8 +55,6 @@ def process_query(
         AnnData of query cells
     save_folder
         Folder to save data to
-    ref_adata_path
-        Path to reference AnnData
     ref_labels_key
         Key in obs field of reference AnnData for labels
     ref_batch_keys
@@ -327,11 +324,9 @@ def annotate_data(
         #     obs_keys=[knn_pred_key],
         #     obsm_keys=[scvi_obsm_latent_key, scvi_obsm_latent_key + "_umap"],
         # )
-        np.savetxt(
-            os.path.join(save_path, "scvi_latent.csv"),
-            adata.obsm[scvi_obsm_latent_key],
-            delimiter=",",
-        )
+        df = pd.DataFrame(adata.obsm[scvi_obsm_latent_key], index=adata.obs_names)
+        df.to_csv(os.path.join(save_path, "scvi_latent.csv"))
+
 
     if "scanvi" in methods:
         training_mode = adata.uns["_training_mode"]
