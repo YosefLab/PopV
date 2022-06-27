@@ -270,6 +270,7 @@ def annotate_data(
     onclass_emb_fp="cl.ontology.nlp.emb",
     scvi_max_epochs=None,
     scanvi_max_epochs=None,
+    use_gpu=None,
 ):
     if not os.path.exists(save_path):
         os.mkdir(save_path)
@@ -307,6 +308,7 @@ def annotate_data(
             dispersion="gene-batch",
             obsm_latent_key=scvi_obsm_latent_key,
             pretrained_scvi_path=pretrained_scvi_path,
+            use_gpu=use_gpu,
         )
         knn_pred_key = "knn_on_scvi_{}_pred".format(training_mode)
         run_knn_on_scvi(adata, obsm_key=scvi_obsm_latent_key, result_key=knn_pred_key)
@@ -340,6 +342,7 @@ def annotate_data(
             obsm_latent_key=obsm_latent_key,
             obs_pred_key=predictions_key,
             pretrained_scanvi_path=pretrained_scanvi_path,
+            use_gpu=use_gpu,
         )
 
         # save_results(
@@ -354,11 +357,9 @@ def annotate_data(
         #     obs_keys=[predictions_key],
         #     obsm_keys=[obsm_latent_key],
         # )
-        np.savetxt(
-            os.path.join(save_path, "scanvi_latent.csv"),
-            adata.obsm[obsm_latent_key],
-            delimiter=",",
-        )
+        df = pd.DataFrame(adata.obsm[obsm_latent_key], index=adata.obs_names)
+        df.to_csv(os.path.join(save_path, "scanvi_latent.csv"))
+        
 
     if "svm" in methods:
         run_svm_on_hvg(adata)

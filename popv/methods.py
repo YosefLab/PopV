@@ -39,7 +39,9 @@ def run_bbknn(adata, batch_key="_batch"):
         set_op_mix_ratio=1.0,
         local_connectivity=1,
     )
-    adata.obsm["bbknn_umap"] = sc.tl.umap(adata, maxiter=1500, copy=True).obsm['X_umap']
+    # TODO, save distances
+
+    #adata.obsm["bbknn_umap"] = sc.tl.umap(adata, maxiter=1500, copy=True).obsm['X_umap']
     return adata
 
 
@@ -50,6 +52,7 @@ def run_knn_on_bbknn(
     result_key="knn_on_bbknn_pred",
 ):
     distances = adata.obsp["distances"]
+
 
     ref_idx = adata.obs["_dataset"] == "ref"
     query_idx = adata.obs["_dataset"] == "query"
@@ -211,6 +214,7 @@ def run_scvi(
     save_folder=None,
     overwrite=True,
     save_anndata=False,
+    use_gpu=None
 ):
     scvi.model.SCVI.setup_anndata(
         adata,
@@ -244,7 +248,7 @@ def run_scvi(
         model = scvi.model.SCVI.load_query_data(query, pretrained_scvi_path)
         print("Training scvi online.")
 
-    model.train(max_epochs=max_epochs, train_size=1.0, batch_size=batch_size)
+    model.train(max_epochs=max_epochs, train_size=1.0, batch_size=batch_size, use_gpu=use_gpu)
 
     # # temporary scvi hack
     # tmp_mappings = adata.uns["_scvi"]["categorical_mappings"]["_scvi_labels"]
@@ -252,8 +256,8 @@ def run_scvi(
 
     adata.obsm[obsm_latent_key] = model.get_latent_representation(adata)
 
-    sc.pp.neighbors(adata, use_rep=obsm_latent_key)
-    adata.obsm[obsm_latent_key + "_umap"] = sc.tl.umap(adata, min_dist=0.01, maxiter=1500, copy=True).obsm['X_umap']
+    #sc.pp.neighbors(adata, use_rep=obsm_latent_key)
+    #adata.obsm[obsm_latent_key + "_umap_popv"] = sc.tl.umap(adata, min_dist=0.01, maxiter=1500, copy=True).obsm['X_umap']
 
     if save_folder is not None:
         print("Saving scvi model to ", save_folder)
@@ -328,10 +332,10 @@ def run_scanorama(adata, batch_key="_batch"):
     tmp_adata = anndata.concat(adatas)
     adata.obsm["X_scanorama"] = tmp_adata[adata.obs_names].obsm["X_scanorama"]
 
-    print("Computing umap on scanorama")
-    sc.pp.neighbors(adata, use_rep="X_scanorama")
-    sc.tl.umap(adata, maxiter=1500)
-    adata.obsm["scanorama_umap"] = sc.tl.umap(adata, min_dist=0.01, maxiter=1500, copy=True).obsm['X_umap']
+    #print("Computing umap on scanorama")
+    #sc.pp.neighbors(adata, use_rep="X_scanorama")
+    #sc.tl.umap(adata, maxiter=1500)
+    #adata.obsm["scanorama_umap_popv"] = sc.tl.umap(adata, min_dist=0.01, maxiter=1500, copy=True).obsm['X_umap']
 
 
 @try_method("Running scANVI")
@@ -354,6 +358,7 @@ def run_scanvi(
     save_folder=None,
     save_anndata=False,
     overwrite=True,
+    use_gpu=None
 ):
     scvi.model.SCANVI.setup_anndata(
         adata,
@@ -402,11 +407,13 @@ def run_scanvi(
         train_size=1.0,
         n_samples_per_label=n_samples_per_label,
         plan_kwargs=plan_kwargs,
+        use_gpu=use_gpu
     )
 
     adata.obsm[obsm_latent_key] = model.get_latent_representation(adata)
     adata.obs[obs_pred_key] = model.predict(adata)
-
+    
+    #adata.obsm[obsm_latent_key + "_umap_popv"] = sc.tl.umap(adata, min_dist=0.01, maxiter=1500, copy=True).obsm[obsm_latent_key]
     if save_folder is not None:
         print("Saving scanvi model to ", save_folder)
         model.save(save_folder, overwrite=overwrite, save_anndata=save_anndata)
