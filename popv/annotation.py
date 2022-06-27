@@ -191,38 +191,7 @@ def process_query(
     return adata
 
 
-def prediction_eval(
-    pred,
-    labels,
-    name,
-    x_label="",
-    y_label="",
-    res_dir="./",
-):
-    """
-    Generate confusion matrix
-    """
-    x = np.concatenate([labels, pred])
-    types, temp = np.unique(x, return_inverse=True)
-    prop = np.asarray([np.mean(np.asarray(labels) == i) for i in types])
-    prop = pd.DataFrame([types, prop], index=["types", "prop"], columns=types).T
-    mtx = confusion_matrix(labels, pred, normalize="true")
-    df = pd.DataFrame(mtx, columns=types, index=types)
-    df = df.loc[np.unique(labels), np.unique(pred)]
-    df = df.rename_axis(
-        x_label, axis="columns"
-    )  # TODO: double check the axes are correct
-    df = df.rename_axis(y_label)
-    df.to_csv(res_dir + "/%s_prediction_accuracy.csv" % name)
-    plt.figure(figsize=(15, 12))
-    sns.heatmap(df, linewidths=0.005, cmap="OrRd")
-    plt.tight_layout()
-    output_pdf_fn = os.path.join(res_dir, "confusion_matrices.pdf")
-    pdf = matplotlib.backends.backend_pdf.PdfPages(output_pdf_fn)
-    for fig in range(1, plt.gcf().number + 1):
-        pdf.savefig(fig)
-    pdf.close()
-    return plt.figure(1)
+
 
 
 def compute_consensus(adata, prediction_keys):
@@ -242,11 +211,11 @@ def compute_consensus(adata, prediction_keys):
     Saves the consensus percentage between methods in adata.obs['consensus_percentage']
     """
     consensus_prediction = adata.obs[prediction_keys].apply(majority_vote, axis=1)
-    adata.obs["consensus_prediction"] = consensus_prediction
+    adata.obs["popv_majority_vote_prediction"] = consensus_prediction
 
     agreement = adata.obs[prediction_keys].apply(majority_count, axis=1)
     agreement *= 100
-    adata.obs["consensus_percentage"] = agreement.values.round(2).astype(str)
+    adata.obs["popv_majority_vote_score"] = agreement.values.round(2).astype(str)
 
 
 def majority_vote(x):
@@ -280,7 +249,7 @@ def annotate_data(
     if "bbknn" in methods:
         run_bbknn(adata, batch_key="_batch_annotation")
         run_knn_on_bbknn(
-            adata, labels_key="_labels_annotation", result_key="knn_on_bbknn_pred"
+            adata, labels_key="_labels_annotation", result_key="popv_knn_on_bbknn_prediction"
         )
 
         # save_results(
@@ -310,7 +279,7 @@ def annotate_data(
             pretrained_scvi_path=pretrained_scvi_path,
             use_gpu=use_gpu,
         )
-        knn_pred_key = "knn_on_scvi_{}_pred".format(training_mode)
+        knn_pred_key = "popv_knn_on_scvi_{}_prediction".format(training_mode)
         run_knn_on_scvi(adata, obsm_key=scvi_obsm_latent_key, result_key=knn_pred_key)
 
         # save_results(
@@ -332,7 +301,7 @@ def annotate_data(
     if "scanvi" in methods:
         training_mode = adata.uns["_training_mode"]
         obsm_latent_key = "X_scanvi_{}".format(training_mode)
-        predictions_key = "scanvi_{}_pred".format(training_mode)
+        predictions_key = "popv_scanvi_{}_prediction".format(training_mode)
         run_scanvi(
             adata,
             max_epochs=scanvi_max_epochs,
@@ -412,12 +381,9 @@ def annotate_data(
         "knn_on_scanorama_pred",
     ]
 
-    obs_keys = adata.obs.keys()
-
-    pred_keys = [key for key in all_prediction_keys if key in adata.obs.keys()]
-
+    pred_keys = [key for key in adata.obs.keys() if key.startswith('popv_')]
     compute_consensus(adata, pred_keys)
-    ontology_vote_onclass(adata, onclass_obo_fp, "ontology_prediction", pred_keys)
+    ontology_vote_onclass(adata, onclass_obo_fp, "popv_prediction", pred_keys)
 
     # save_results(
     #     adata,
@@ -438,7 +404,7 @@ def annotate_data(
     prediction_save_path = os.path.join(save_path, "predictions.csv")
     adata[adata.obs._dataset == "query"].obs[
         pred_keys
-        + ["consensus_prediction", "consensus_percentage", "ontology_prediction"]
+        + ["popv_prediction", "popv_prediction_score", "popv_majority_vote_prediction", 'popv_majority_vote_score']
     ].to_csv(prediction_save_path)
 
     print(f'Predictions saved to {prediction_save_path}')

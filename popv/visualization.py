@@ -99,11 +99,41 @@ def sample_report(adata, cell_type_key, score_key, pred_keys):
 
         ax.set_title(key, fontsize=14, fontname="Monospace")
         plt.show()
+        
+def prediction_eval(
+    pred,
+    labels,
+    name,
+    x_label="",
+    y_label="",
+    res_dir="./",
+):
+    """
+    Generate confusion matrix
+    """
+    x = np.concatenate([labels, pred])
+    types, temp = np.unique(x, return_inverse=True)
+    prop = np.asarray([np.mean(np.asarray(labels) == i) for i in types])
+    prop = pd.DataFrame([types, prop], index=["types", "prop"], columns=types).T
+    mtx = confusion_matrix(labels, pred, normalize="true")
+    df = pd.DataFrame(mtx, columns=types, index=types)
+    df = df.loc[np.unique(labels), np.unique(pred)]
+    df = df.rename_axis(
+        x_label, axis="columns"
+    )  # TODO: double check the axes are correct
+    df = df.rename_axis(y_label)
+#     df.to_csv(res_dir + "/%s_prediction_accuracy.csv" % name)
+    plt.figure(figsize=(15, 12))
+    sns.heatmap(df, linewidths=0.005, cmap="OrRd")
+    plt.tight_layout()
+    output_pdf_fn = os.path.join(res_dir, "confusion_matrices.pdf")
+    pdf = matplotlib.backends.backend_pdf.PdfPages(output_pdf_fn)
+    for fig in range(1, plt.gcf().number + 1):
+        pdf.savefig(fig)
+    pdf.close()
+    return plt.figure(1)
 
-
-def make_agreement_plots(adata, methods, save_folder):
-    # TODO should this be pulling from resultsadata?
-
+def make_agreement_plots(adata, methods, popv_prediction_key, save_folder):
     # clear all existing figures first
     # or else this will interfere with the pdf saving capabilities
     fig_nums = plt.get_fignums()
@@ -113,7 +143,7 @@ def make_agreement_plots(adata, methods, save_folder):
     for method in methods:
         print("Making confusion matrix for {}".format(method))
         x_label = method
-        y_label = "consensus_prediction"
+        y_label = popv_prediction_key
         prediction_eval(
             adata.obs[x_label],
             adata.obs[y_label],

@@ -49,7 +49,7 @@ def run_bbknn(adata, batch_key="_batch"):
 def run_knn_on_bbknn(
     adata,
     labels_key="_labels_annotation",
-    result_key="knn_on_bbknn_pred",
+    result_key="popv_knn_on_bbknn_prediction",
 ):
     distances = adata.obsp["distances"]
 
@@ -79,7 +79,7 @@ def run_knn_on_bbknn(
 def run_rf_on_hvg(
     adata,
     labels_key="_labels_annotation",
-    save_key="rf_pred",
+    save_key="popv_rf_prediction",
     layers_key="logcounts",
 ):
     train_idx = adata.obs["_ref_subsample"]
@@ -106,7 +106,7 @@ def run_onclass(
     nlp_emb_file,
     labels_key="_labels_annotation",
     layer=None,
-    save_key="onclass_pred",
+    save_key="popv_onclass_prediction",
     n_hidden=500,
     max_iter=20,
     save_model="onclass_model",
@@ -180,7 +180,7 @@ def run_onclass(
 def run_svm_on_hvg(
     adata,
     labels_key="_labels_annotation",
-    save_key="svm_pred",
+    save_key="popv_svm_prediction",
     layers_key="logcounts",
 ):
     train_idx = adata.obs["_ref_subsample"]
@@ -268,7 +268,7 @@ def run_knn_on_scvi(
     adata,
     labels_key="_labels_annotation",
     obsm_key="X_scvi",
-    result_key="knn_on_scvi_pred",
+    result_key="popv_knn_on_scvi_prediction",
 ):
     if obsm_key not in adata.obsm.keys():
         raise ValueError("Please train scVI first or pass in a valid obsm_key.")
@@ -300,7 +300,7 @@ def run_knn_on_scanorama(
     adata,
     labels_key="_labels_annotation",
     obsm_key="X_scanorama",
-    result_key="knn_on_scanorama_pred",
+    result_key="popv_knn_on_scanorama_prediction",
 ):
     print("Running knn on scanorama")
     if obsm_key not in adata.obsm.keys():
@@ -353,7 +353,7 @@ def run_scanvi(
     n_epochs_kl_warmup=20,
     n_samples_per_label=100,
     obsm_latent_key="X_scanvi",
-    obs_pred_key="scanvi_pred",
+    obs_pred_key="popv_scanvi_prediction",
     pretrained_scanvi_path=None,
     save_folder=None,
     save_anndata=False,
