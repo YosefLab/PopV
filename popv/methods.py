@@ -25,7 +25,6 @@ from sklearn.neighbors import KNeighborsClassifier
 from .utils import *
 
 
-@try_method("Integrating data with bbknn")
 def run_bbknn(adata, batch_key="_batch"):
     sc.external.pp.bbknn(
         adata,
@@ -45,7 +44,6 @@ def run_bbknn(adata, batch_key="_batch"):
     return adata
 
 
-@try_method("Classifying with knn on bbknn distances")
 def run_knn_on_bbknn(
     adata,
     labels_key="_labels_annotation",
@@ -75,7 +73,6 @@ def run_knn_on_bbknn(
     print('Saved knn on bbknn results to adata.obs["{}"]'.format(result_key))
 
 
-@try_method("Classifying with random forest")
 def run_rf_on_hvg(
     adata,
     labels_key="_labels_annotation",
@@ -88,7 +85,7 @@ def run_rf_on_hvg(
     train_x = adata[train_idx].layers[layers_key]
     train_y = adata[train_idx].obs[labels_key].to_numpy()
     test_x = adata[test_idx].layers[layers_key]
-    
+
     print("Training random forest classifier with {} cells".format(len(train_y)))
     n_features = np.max([200., np.sqrt(2000.)]).astype(int)
     rf = RandomForestClassifier(class_weight='balanced_subsample', max_features=n_features)
@@ -98,7 +95,7 @@ def run_rf_on_hvg(
     adata.obs[save_key] = adata.obs[labels_key]
     adata.obs[save_key][test_idx] = rf_pred
 
-@try_method("Classifying with onclass")
+
 def run_onclass(
     adata,
     cl_obo_file,
@@ -176,7 +173,7 @@ def run_onclass(
 
     return adata
 
-@try_method("Classifying with SVM")
+
 def run_svm_on_hvg(
     adata,
     labels_key="_labels_annotation",
@@ -199,7 +196,7 @@ def run_svm_on_hvg(
     adata.obs[save_key][test_idx] = svm_pred
 
 
-@try_method("Running scvi")
+
 def run_scvi(
     adata,
     n_latent=50,
@@ -263,7 +260,7 @@ def run_scvi(
         print("Saving scvi model to ", save_folder)
         model.save(save_folder, overwrite=overwrite, save_anndata=save_anndata)
 
-@try_method("Classifying with knn on scVI latent space")
+
 def run_knn_on_scvi(
     adata,
     labels_key="_labels_annotation",
@@ -295,7 +292,6 @@ def run_knn_on_scvi(
     adata.obs[result_key][query_idx] = knn_pred
 
 
-@try_method("Classifying with knn on scanorama latent space")
 def run_knn_on_scanorama(
     adata,
     labels_key="_labels_annotation",
@@ -323,7 +319,6 @@ def run_knn_on_scanorama(
     adata.obs[result_key][query_idx] = knn_pred
 
 
-@try_method("Running scanorama")
 def run_scanorama(adata, batch_key="_batch"):
     # TODO add check if in colab and n_genes > 120000
     # throw warning
@@ -338,7 +333,6 @@ def run_scanorama(adata, batch_key="_batch"):
     #adata.obsm["scanorama_umap_popv"] = sc.tl.umap(adata, min_dist=0.01, maxiter=1500, copy=True).obsm['X_umap']
 
 
-@try_method("Running scANVI")
 def run_scanvi(
     adata,
     unlabeled_category="unknown",
@@ -412,7 +406,7 @@ def run_scanvi(
 
     adata.obsm[obsm_latent_key] = model.get_latent_representation(adata)
     adata.obs[obs_pred_key] = model.predict(adata)
-    
+
     #adata.obsm[obsm_latent_key + "_umap_popv"] = sc.tl.umap(adata, min_dist=0.01, maxiter=1500, copy=True).obsm[obsm_latent_key]
     if save_folder is not None:
         print("Saving scanvi model to ", save_folder)
