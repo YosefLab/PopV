@@ -34,7 +34,7 @@ We suggest using a package manager like conda or mamba to install the package. D
 
 We deposited an example notebook in Google Colab:
 
--   [Tutorial](https://colab.research.google.com/drive/1Yw4ZDMoPgXNiC1ZQo2eS75Sw8Y_23rrb?usp=sharing)
+-   [Tutorial](https://colab.research.google.com/drive/1mVf4Ksb9WQJ77wEFFduNTHLjON4FlsGc#scrollTo=ZnoRUg58Aq4-)
 
 This notebook will guide you through annotating a dataset based on the annotated [Tabula sapiens reference](https://tabula-sapiens-portal.ds.czbiohub.org) and demonstrates how to run annotation on your own query dataset.
 
