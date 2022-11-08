@@ -1,31 +1,27 @@
-import os
-import obonet
+"""PopV."""
 
-import anndata
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-import networkx as nx
-import scipy.sparse as sp_sparse
-import scanorama
-import scanpy as sc
-import scvi
-import seaborn as sns
-import string
-
-
-from OnClass.OnClassModel import OnClassModel
+# Set default logging handler to avoid logging with logging.lastResort logger.
 import logging
+import scanpy as sc
 
-from sklearn import svm
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import confusion_matrix
-from sklearn.neighbors import KNeighborsClassifier
-import matplotlib.backends.backend_pdf
-from numba import boolean, float32, float64, int32, int64, vectorize
-from collections import defaultdict
+from ._settings import Config
 
-from .accuracy import *
-from .visualization import *
-from .annotation import *
-from .utils import _check_nonnegative_integers
+from . import algorithms
+
+try:
+    import importlib.metadata as importlib_metadata
+except ModuleNotFoundError:
+    import importlib_metadata
+package_name = "scvi-tools"  # CAN update here.
+__version__ = importlib_metadata.version(package_name)
+
+Config.verbosity = logging.INFO
+Config.num_threads = 10
+sc.settings.n_jobs = Config.num_threads
+
+test_var = "test"
+# Jax sets the root logger, this prevents double output.
+scvi_logger = logging.getLogger("popv")
+scvi_logger.propagate = False
+
+__all__ = ["settings", "algorithms"]

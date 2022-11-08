@@ -1,32 +1,20 @@
+"""Function to plot cell-type annotation."""
+
 import logging
 import os
-import string
-from collections import defaultdict
+from typing import Optional
 
-import anndata
 import matplotlib.backends.backend_pdf
 import matplotlib.pyplot as plt
-import networkx as nx
 import numpy as np
-import obonet
 import pandas as pd
-import scanorama
-import scanpy as sc
-import scipy.sparse as sp_sparse
-import scvi
 import seaborn as sns
-from numba import boolean, float32, float64, int32, int64, vectorize
-from OnClass.OnClassModel import OnClassModel
-from sklearn import svm
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
-from sklearn.neighbors import KNeighborsClassifier
 
-from . import alluvial
-from .utils import *
+from . import _alluvial
 
 
-def sample_report(adata, cell_type_key, score_key, pred_keys):
+def _sample_report(adata, cell_type_key, score_key, pred_keys):
     adata.obs["counts"] = np.zeros(len(adata.obs))
     _counts_adata = (
         adata.obs.groupby([cell_type_key, score_key]).count()[["counts"]].reset_index()
@@ -76,14 +64,12 @@ def sample_report(adata, cell_type_key, score_key, pred_keys):
         ).to_dict()
         cmap = matplotlib.cm.get_cmap("jet")
         sorted_index = np.array(new_index)[
-            sorted(list(range(new_matrix.shape[0])), key=lambda r: np.sum(np_counts[r]))
+            sorted(range(new_matrix.shape[0]), key=lambda r: np.sum(np_counts[r]))
         ]
         sorted_columns = np.array(new_columns)[
-            sorted(
-                list(range(new_matrix.shape[1])), key=lambda c: np.sum(np_counts[:, c])
-            )
+            sorted(range(new_matrix.shape[1]), key=lambda c: np.sum(np_counts[:, c]))
         ]
-        ax = alluvial.plot(
+        ax = _alluvial.plot(
             input_data,
             alpha=0.4,
             color_side=1,
@@ -99,41 +85,120 @@ def sample_report(adata, cell_type_key, score_key, pred_keys):
 
         ax.set_title(key, fontsize=14, fontname="Monospace")
         plt.show()
-        
-def prediction_eval(
-    pred,
-    labels,
-    name,
-    x_label="",
-    y_label="",
-    res_dir="./",
+
+
+def agreement_score_bar_plot(
+    adata,
+    popv_prediction_key: Optional[str] = "popv_prediction",
+    consensus_percentage_key: Optional[str] = "consensus_percentage",
+    save_folder: Optional[str] = None,
 ):
     """
-    Generate confusion matrix
-    """
-    x = np.concatenate([labels, pred])
-    types, temp = np.unique(x, return_inverse=True)
-    prop = np.asarray([np.mean(np.asarray(labels) == i) for i in types])
-    prop = pd.DataFrame([types, prop], index=["types", "prop"], columns=types).T
-    mtx = confusion_matrix(labels, pred, normalize="true")
-    df = pd.DataFrame(mtx, columns=types, index=types)
-    df = df.loc[np.unique(labels), np.unique(pred)]
-    df = df.rename_axis(
-        x_label, axis="columns"
-    )  # TODO: double check the axes are correct
-    df = df.rename_axis(y_label)
-#     df.to_csv(res_dir + "/%s_prediction_accuracy.csv" % name)
-    plt.figure(figsize=(15, 12))
-    sns.heatmap(df, linewidths=0.005, cmap="OrRd")
-    plt.tight_layout()
-    output_pdf_fn = os.path.join(res_dir, "confusion_matrices.pdf")
-    pdf = matplotlib.backends.backend_pdf.PdfPages(output_pdf_fn)
-    for fig in range(1, plt.gcf().number + 1):
-        pdf.savefig(fig)
-    pdf.close()
-    return plt.figure(1)
+    Create bar-plot of prediction scores in query cells after running popv.
 
-def make_agreement_plots(adata, methods, popv_prediction_key, save_folder):
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    popv_prediction_score
+        Key in adata.obs for prediction scores.
+    save_folder
+        Path to a folder for storing the plot. Defaults to None and plot is not stored.
+
+    Returns
+    -------
+    Returns axis of corresponding plot.
+
+    """
+    celltypes = adata.obs[popv_prediction_key].unique()
+    mean_agreement = [
+        np.mean(
+            adata[
+                adata.obs["_dataset"] == "query" & adata.obs[popv_prediction_key] == x
+            ]
+            .obs[consensus_percentage_key]
+            .astype(float)
+        )
+        for x in celltypes
+    ]
+    mean_agreement = pd.DataFrame(
+        [mean_agreement], index=["agreement"], columns=celltypes
+    ).T
+
+    mean_agreement = mean_agreement.sort_values("agreement", ascending=True)
+    ax = mean_agreement.plot.bar(y="agreement", figsize=(15, 2), legend=False)
+    plt.ylabel("Mean Agreement")
+    plt.xticks(rotation=290, ha="left")
+    if save_folder is not None:
+        figpath = os.path.join(save_folder, "percelltype_agreement_barplot.pdf")
+        plt.savefig(figpath, bbox_inches="tight")
+    return ax
+
+
+def prediction_score_bar_plot(
+    adata,
+    popv_prediction_score: Optional[str] = "popv_prediction_score",
+    save_folder: Optional[str] = None,
+):
+    """
+    Create bar-plot of prediction scores in query cells after running popv.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    popv_prediction_score
+        Key in adata.obs for prediction scores.
+    save_folder
+        Path to a folder for storing the plot. Defaults to None and plot is not stored.
+
+    Returns
+    ----------
+    Returns axis object of corresponding plot.
+
+    """
+    ax = (
+        adata[adata.obs["_dataset"] == "query"]
+        .obs[popv_prediction_score]
+        .value_counts()
+        .sort_index()
+        .plot.bar()
+    )
+
+    ax.set_xlabel("Score")
+    ax.set_ylabel("Frequency")
+    ax.set_title("PopV Prediction Score")
+    if save_folder is not None:
+        save_path = os.path.join(save_folder, "prediction_score_barplot.pdf")
+        ax.get_figure().savefig(save_path, bbox_inches="tight", dpi=300)
+    return ax
+
+
+def make_agreement_plots(
+    adata,
+    methods: list,
+    popv_prediction_key: Optional[str] = "popv_prediction",
+    save_folder: Optional[str] = None,
+):
+    """
+    Create plot of confusion matrix for different popv methods and consensus prediction.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    methods
+        List with key for methods for which confusion matrix is computed.
+    popv_prediction_key
+        Key in adata.obs for consensus prediction.
+    save_folder
+        Path to a folder for storing the plot. Defaults to None and plot is not stored.
+
+    Returns
+    -------
+    Returns axis of corresponding plot.
+
+    """
     # clear all existing figures first
     # or else this will interfere with the pdf saving capabilities
     fig_nums = plt.get_fignums()
@@ -141,15 +206,43 @@ def make_agreement_plots(adata, methods, popv_prediction_key, save_folder):
         plt.close(num)
 
     for method in methods:
-        print("Making confusion matrix for {}".format(method))
-        x_label = method
-        y_label = popv_prediction_key
-        prediction_eval(
-            adata.obs[x_label],
-            adata.obs[y_label],
+        logging.info(f"Making confusion matrix for {method}")
+        _prediction_eval(
+            adata.obs[method],
+            adata.obs[popv_prediction_key],
             name=method,
-            x_label=x_label,
-            y_label=y_label,
-            res_dir=save_folder,
+            x_label=method,
+            y_label=popv_prediction_key,
+            res_dir=None,
         )
-    plt.close()
+
+
+def _prediction_eval(
+    pred,
+    labels,
+    name,
+    x_label="",
+    y_label="",
+    res_dir="./",
+):
+    """Generate confusion matrix."""
+    x = np.concatenate([labels, pred])
+    types, _ = np.unique(x, return_inverse=True)
+    prop = np.asarray([np.mean(np.asarray(labels) == i) for i in types])
+    prop = pd.DataFrame([types, prop], index=["types", "prop"], columns=types).T
+    mtx = confusion_matrix(labels, pred, normalize="true")
+    df = pd.DataFrame(mtx, columns=types, index=types)
+    df = df.loc[np.unique(labels), np.unique(pred)]
+    df = df.rename_axis(x_label, axis="columns")
+    df = df.rename_axis(y_label)
+    plt.figure(figsize=(15, 12))
+    sns.heatmap(df, linewidths=0.005, cmap="OrRd")
+    plt.tight_layout()
+    plt.title(name)
+    if res_dir is not None:
+        output_pdf_fn = os.path.join(res_dir, "confusion_matrices.pdf")
+        pdf = matplotlib.backends.backend_pdf.PdfPages(output_pdf_fn)
+        for fig in range(1, plt.gcf().number + 1):
+            pdf.savefig(fig)
+        pdf.close()
+    plt.show()

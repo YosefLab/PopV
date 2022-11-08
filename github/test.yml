@@ -4,45 +4,45 @@
 name: PopV
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+    push:
+        branches: [main]
+    pull_request:
+        branches: [main]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
+    build:
+        runs-on: ubuntu-latest
+        timeout-minutes: 20
+        strategy:
+            matrix:
+                python-version: [3.6, 3.7, 3.8, 3.9]
 
-    steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Cache pip
-      uses: actions/cache@v2
-      with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-v1-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-v1-
-    - name: Install dependencies
-      run: |
-        pip install poetry
-        poetry install
-    - name: Lint with flake8
-      run: |
-        poetry run flake8
-    - name: Format with black
-      run: |
-        poetry run black --check .
-    - name: Import sort
-      run: |
-        poetry run isort --check-only .
-    - name: Test with pytest
-      run: |
-        poetry run pytest --cov-report=xml --cov=popv
+        steps:
+            - uses: actions/checkout@v2
+            - name: Set up Python ${{ matrix.python-version }}
+              uses: actions/setup-python@v2
+              with:
+                  python-version: ${{ matrix.python-version }}
+            - name: Cache pip
+              uses: actions/cache@v2
+              with:
+                  path: ~/.cache/pip
+                  key: ${{ runner.os }}-pip-v1-${{ hashFiles('**/requirements.txt') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pip-v1-
+            - name: Install dependencies
+              run: |
+                  pip install poetry
+                  poetry install
+            - name: Lint with flake8
+              run: |
+                  poetry run flake8
+            - name: Format with black
+              run: |
+                  poetry run black --check .
+            - name: Import sort
+              run: |
+                  poetry run isort --check-only .
+            - name: Test with pytest
+              run: |
+                  poetry run pytest --cov-report=xml --cov=popv
