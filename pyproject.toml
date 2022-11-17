@@ -13,6 +13,7 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "Natural Language :: English",
   "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.8",
   "Programming Language :: Python :: 3.9"
 ]
 description = "Automatic annotation of single cell data using a labelled reference dataset including various methods and giving certainty across those methods."
@@ -23,7 +24,7 @@ version = "0.1.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.10"
+python = ">=3.7,<3.10"
 bbknn = "1.5.1"
 black = {version = ">=22.3", optional = true}
 codecov = {version = ">=2.0.8", optional = true}

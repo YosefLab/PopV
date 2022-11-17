@@ -38,4 +38,4 @@ We deposited an example notebook in Google Colab:
 
 This notebook will guide you through annotating a dataset based on the annotated [Tabula sapiens reference](https://tabula-sapiens-portal.ds.czbiohub.org) and demonstrates how to run annotation on your own query dataset.
 
-Memory requirements exceed the free limit in Colab and we recommend a Pro access to run the notebook.
+Memory requirements exceed the free limit in Colab and we recommend a Pro access to run the noteook.
