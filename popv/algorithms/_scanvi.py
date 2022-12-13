@@ -1,4 +1,3 @@
-from mrc import save
 import scanpy as sc
 import numpy as np
 import logging
@@ -129,7 +128,7 @@ class SCANVI_POPV:
 
         if self.save_folder is not None:
             self.model.save(self.save_folder, overwrite=True, save_anndata=False)
-    
+
     def predict(self, adata):
         logging.info('Saving scanvi label prediction to adata.obs["{}"]'.format(self.result_key))
 

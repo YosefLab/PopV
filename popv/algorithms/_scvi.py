@@ -1,4 +1,3 @@
-from mrc import save
 import scanpy as sc
 import numpy as np
 import logging
@@ -76,7 +75,7 @@ class SCVI_POPV:
 
     def compute_integration(self, adata):
         logging.info("Integrating data with scvi")
-        
+
         SCVI.setup_anndata(
             adata,
             batch_key=self.batch_key,
@@ -107,7 +106,7 @@ class SCVI_POPV:
 
         if self.save_folder is not None:
             model.save(self.save_folder, overwrite=True, save_anndata=False)
-    
+
     def predict(self, adata):
         logging.info('Saving knn on scvi results to adata.obs["{}"]'.format(self.result_key))
 

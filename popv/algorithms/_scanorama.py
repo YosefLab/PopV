@@ -1,4 +1,3 @@
-from mrc import save
 import scanpy as sc
 import numpy as np
 import logging
@@ -72,7 +71,7 @@ class SCANORAMA:
         tmp_adata = anndata.concat(_adatas)
         adata.obsm["X_scanorama"] = tmp_adata[adata.obs_names].obsm["X_scanorama"]
 
-    
+
     def predict(self, adata, result_key="popv_knn_on_scanorama_prediction"):
         logging.info('Saving knn on scanorama results to adata.obs["{}"]'.format(result_key))
 
