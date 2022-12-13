@@ -191,7 +191,9 @@ class Process_Query:
             join="outer",
             fill_value=self.unknown_celltype_label,
         )
-        self.adata.obs[self.labels_key["reference"]] = self.adata.obs[self.labels_key["reference"]].astype('category')
+        self.adata.obs[self.labels_key["reference"]] = self.adata.obs[
+            self.labels_key["reference"]
+        ].astype("category")
 
         self.adata.obs[self.labels_key["reference"]] = (
             self.adata.obs[self.labels_key["reference"]]
