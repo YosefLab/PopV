@@ -169,15 +169,15 @@ class ONCLASS:
             for i in range(0, test_adata.n_obs, self.shard_size):
                 tmp_X = corr_test_feature[i : i + self.shard_size]
                 onclass_pred = train_model.Predict(tmp_X, use_normalize=False)
-                pred_label_str = [train_model.i2co[l] for l in onclass_pred[2]]
-                pred_label_str = [clid_2_name[i] for i in pred_label_str]
+                pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
+                pred_label_str = [clid_2_name[ind] for ind in pred_label]
                 test_adata.obs[self.result_key][
                     i : i + self.shard_size
                 ] = pred_label_str
         else:
             onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False)
-            pred_label_str = [train_model.i2co[l] for l in onclass_pred[2]]
-            pred_label_str = [clid_2_name[i] for i in pred_label_str]
+            pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
+            pred_label_str = [clid_2_name[ind] for ind in pred_label]
             test_adata.obs[self.result_key] = pred_label_str
 
         adata.obs[self.result_key] = adata.obs[self.labels_key].astype(str)

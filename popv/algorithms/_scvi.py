@@ -1,6 +1,3 @@
-from mrc import save
-import scanpy as sc
-import numpy as np
 import logging
 from typing import Optional
 
