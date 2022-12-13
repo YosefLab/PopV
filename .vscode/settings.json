@@ -1,11 +1,16 @@
 {
-    "python.testing.pytestArgs": [
-        "."
-    ],
+    "python.testing.pytestArgs": ["tests"],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
     "cSpell.words": [
+        "adata",
+        "ANVI",
         "cbase",
-        "disp"
+        "Colab",
+        "conda",
+        "disp",
+        "popv",
+        "SCANORAMA",
+        "yourenv"
     ]
 }
