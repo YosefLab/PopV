@@ -60,6 +60,8 @@ tensorflow = "^2.11.0"
 tqdm = "4.64.0"
 transformers = "^4.25.1"
 typing-extensions = "4.2.0"
+protobuf = "3.19"
+obonet = "^0.3.1"
 
 [tool.poetry.extras]
 dev = ["black", "pytest", "flake8", "codecov", "scanpy", "loompy", "jupyter", "nbformat", "nbconvert", "pre-commit", "isort"]

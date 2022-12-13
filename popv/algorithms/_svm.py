@@ -1,10 +1,8 @@
-from ast import Pass
-import scanpy as sc
-import numpy as np
 import logging
+from ast import Pass
+from typing import Optional
 
 from sklearn import svm
-from typing import Optional, Literal
 
 
 class SVM:
@@ -16,7 +14,7 @@ class SVM:
         result_key: Optional[str] = "popv_svm_prediction",
         embedding_key: Optional[str] = None,
         classifier_dict: Optional[str] = {},
-        ) -> None:
+    ) -> None:
         """
         Class to compute KNN classifier after BBKNN integration.
 
@@ -46,12 +44,16 @@ class SVM:
             "class_weight": "balanced",
         }
         self.classifier_dict.update(classifier_dict)
-        
+
     def compute_integration(self, adata):
         Pass
-    
+
     def predict(self, adata):
-        logging.info('Computing support vector machine. Storing prediction in adata.obs["{}"]'.format(self.result_key))
+        logging.info(
+            'Computing support vector machine. Storing prediction in adata.obs["{}"]'.format(
+                self.result_key
+            )
+        )
 
         train_idx = adata.obs["_ref_subsample"]
         test_idx = adata.obs["_dataset"] == "query"

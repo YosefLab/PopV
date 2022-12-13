@@ -1,11 +1,9 @@
-from ast import Pass
-import scanpy as sc
-import numpy as np
 import logging
-import obonet
+from typing import Optional
 
+import obonet
 from OnClass.OnClassModel import OnClassModel
-from typing import Optional, Literal
+
 
 class ONCLASS:
     def __init__(
@@ -15,7 +13,8 @@ class ONCLASS:
         layers_key: Optional[str] = None,
         max_iter: Optional[int] = 20,
         cell_ontology_obs_key: Optional[str] = None,
-        result_key: Optional[str] = "popv_onclass_prediction") -> None:
+        result_key: Optional[str] = "popv_onclass_prediction",
+    ) -> None:
         """
         Class to compute KNN classifier after BBKNN integration.
 
@@ -39,7 +38,7 @@ class ONCLASS:
         self.labels_key = labels_key
         self.result_key = result_key
         self.layers_key = layers_key
-        
+
         if cell_ontology_obs_key is None:
             self.cell_ontology_obs_key = self.labels_key + "_cell_ontology_id"
         else:
@@ -50,7 +49,7 @@ class ONCLASS:
     def make_celltype_to_cell_ontology_id_dict(self, cl_obo_file):
         """
         Make celltype to ontology id dict and vice versa.
-        
+
         Parameters
         ----------
         cl_obo_file
@@ -62,7 +61,7 @@ class ONCLASS:
         id2name
             dictionary of ontology id to celltype names
         """
-        with open(cl_obo_file, "r") as f:
+        with open(cl_obo_file) as f:
             co = obonet.read_obo(f)
             id2name = {id_: data.get("name") for id_, data in co.nodes(data=True)}
             id2name = {k: v.lower() for k, v in id2name.items() if v is not None}
@@ -87,7 +86,7 @@ class ONCLASS:
         ontology_id = []
 
         for label in adata.obs[self.labels_key]:
-            if label != adata.uns['unknown_celltype_label']:
+            if label != adata.uns["unknown_celltype_label"]:
                 if label not in celltype_dict:
                     print("Following label not in celltype_dict ", label)
                 ontology_id.append(celltype_dict[label])
@@ -98,18 +97,24 @@ class ONCLASS:
 
     def compute_integration(self, adata):
         pass
-    
+
     def predict(self, adata):
-        logging.info('Computing Onclass. Storing prediction in adata.obs["{}"]'.format(self.result_key))
+        logging.info(
+            'Computing Onclass. Storing prediction in adata.obs["{}"]'.format(
+                self.result_key
+            )
+        )
         adata.obs.loc[
             adata.obs["_dataset"] == "query", self.cell_ontology_obs_key
-        ] = adata.uns['unknown_celltype_label']
+        ] = adata.uns["unknown_celltype_label"]
 
-        cl_obo_file = adata.uns['_cl_obo_file']
-        cl_ontology_file = adata.uns['_cl_ontology_file']
-        nlp_emb_file = adata.uns['_nlp_emb_file']
+        cl_obo_file = adata.uns["_cl_obo_file"]
+        cl_ontology_file = adata.uns["_cl_ontology_file"]
+        nlp_emb_file = adata.uns["_nlp_emb_file"]
 
-        celltype_dict, clid_2_name = self.make_celltype_to_cell_ontology_id_dict(cl_obo_file)
+        celltype_dict, clid_2_name = self.make_celltype_to_cell_ontology_id_dict(
+            cl_obo_file
+        )
         self.make_cell_ontology_id(adata, celltype_dict, self.cell_ontology_obs_key)
 
         train_model = OnClassModel(
@@ -126,7 +131,6 @@ class ONCLASS:
             train_X = adata[train_idx].layers[self.layers_key].todense()
             test_X = adata[test_idx].layers[self.layers_key].todense()
 
-
         train_Y = adata[train_idx].obs[self.cell_ontology_obs_key]
 
         test_adata = adata[test_idx]
@@ -140,7 +144,11 @@ class ONCLASS:
             corr_train_genes,
             corr_test_genes,
         ) = train_model.ProcessTrainFeature(
-            train_X, train_Y, adata.var_names, test_feature=test_X, test_genes=adata.var_names
+            train_X,
+            train_Y,
+            adata.var_names,
+            test_feature=test_X,
+            test_genes=adata.var_names,
         )
         train_model.BuildModel(ngene=len(corr_train_genes))
 
@@ -151,7 +159,10 @@ class ONCLASS:
         test_adata.obs[self.result_key] = None
 
         corr_test_feature = train_model.ProcessTestFeature(
-            corr_test_feature, corr_test_genes, use_pretrain=model_path, log_transform=False
+            corr_test_feature,
+            corr_test_genes,
+            use_pretrain=model_path,
+            log_transform=False,
         )
 
         if test_adata.n_obs > self.shard_size:
@@ -160,7 +171,9 @@ class ONCLASS:
                 onclass_pred = train_model.Predict(tmp_X, use_normalize=False)
                 pred_label_str = [train_model.i2co[l] for l in onclass_pred[2]]
                 pred_label_str = [clid_2_name[i] for i in pred_label_str]
-                test_adata.obs[self.result_key][i : i + self.shard_size] = pred_label_str
+                test_adata.obs[self.result_key][
+                    i : i + self.shard_size
+                ] = pred_label_str
         else:
             onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False)
             pred_label_str = [train_model.i2co[l] for l in onclass_pred[2]]
@@ -168,7 +181,9 @@ class ONCLASS:
             test_adata.obs[self.result_key] = pred_label_str
 
         adata.obs[self.result_key] = adata.obs[self.labels_key].astype(str)
-        adata.obs.loc[test_adata.obs_names, self.result_key] = test_adata.obs[self.result_key]
+        adata.obs.loc[test_adata.obs_names, self.result_key] = test_adata.obs[
+            self.result_key
+        ]
 
     def compute_embedding(self, adata):
         pass

@@ -1,13 +1,13 @@
 import logging
-import os
-import torch
 from pathlib import Path
 from typing import Union
 
+import torch
 from rich.console import Console
 from rich.logging import RichHandler
 
 popv_logger = logging.getLogger("popv")
+
 
 class Config:
     """
@@ -36,7 +36,7 @@ class Config:
         seed: int = 0,
         logging_dir: str = "./popv_log/",
     ):
-
+        """Set up Config manager for PopV."""
         self.seed = seed
         self._num_threads = None
         self.logging_dir = logging_dir
@@ -53,12 +53,12 @@ class Config:
 
     @property
     def num_threads(self) -> None:
-        """Number of threads PyTorch will use."""
+        """Number of threads in PyTorch."""
         return self._num_threads
 
     @num_threads.setter
     def num_threads(self, num: int):
-        """Number of threads PyTorch will use."""
+        """Number of threads in PyTorch."""
         self._num_threads = num
         torch.set_num_threads(num)
 

@@ -53,17 +53,6 @@ repos:
                 - --remove-all-unused-imports
                 - --remove-unused-variable
                 - --ignore-init-module-imports
-    - repo: https://github.com/PyCQA/flake8
-      rev: 5.0.4
-      hooks:
-          - id: flake8
-            additional_dependencies:
-                - flake8-tidy-imports
-                - flake8-docstrings
-                - flake8-rst-docstrings
-                - flake8-comprehensions
-                - flake8-bugbear
-                - flake8-blind-except
     - repo: https://github.com/asottile/pyupgrade
       rev: v3.2.0
       hooks:

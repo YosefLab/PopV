@@ -1,10 +1,10 @@
-import scanpy as sc
-import numpy as np
 import logging
+from typing import Optional
 
+import numpy as np
+import scanpy as sc
 from scvi.model import SCVI
 from sklearn.neighbors import KNeighborsClassifier
-from typing import Optional, Literal
 
 
 class SCVI_POPV:
@@ -16,11 +16,11 @@ class SCVI_POPV:
         use_gpu: Optional[bool] = False,
         save_folder: Optional[str] = None,
         result_key: Optional[str] = "popv_knn_on_scvi_prediction",
-        embedding_key: Optional[str] = 'X_scvi_umap_popv',
+        embedding_key: Optional[str] = "X_scvi_umap_popv",
         model_kwargs: Optional[dict] = {},
         classifier_dict: Optional[dict] = {},
-        embedding_dict: Optional[dict] = {}
-        ) -> None:
+        embedding_dict: Optional[dict] = {},
+    ) -> None:
         """
         Class to compute KNN classifier after scVI integration.
 
@@ -62,15 +62,10 @@ class SCVI_POPV:
         }
         self.model_kwargs.update(model_kwargs)
 
-        self.classifier_dict = {
-            "weights": "uniform",
-            "n_neighbors": 15
-        }
+        self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         self.classifier_dict.update(classifier_dict)
 
-        self.embedding_dict = {
-            "min_dist": 0.01
-        }
+        self.embedding_dict = {"min_dist": 0.01}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
@@ -85,10 +80,7 @@ class SCVI_POPV:
         pretrained_scvi_path = adata.uns["_pretrained_scvi_path"]
 
         if pretrained_scvi_path is None:
-            model = SCVI(
-                adata,
-                **self.model_kwargs
-            )
+            model = SCVI(adata, **self.model_kwargs)
             logging.info("Training scvi offline.")
         else:
             query = adata[adata.obs["_dataset"] == "query"].copy()
@@ -102,20 +94,20 @@ class SCVI_POPV:
             max_epochs=self.max_epochs, train_size=1.0, use_gpu=adata.uns["_use_gpu"]
         )
 
-        adata.obsm['X_scvi'] = model.get_latent_representation(adata)
+        adata.obsm["X_scvi"] = model.get_latent_representation(adata)
 
         if self.save_folder is not None:
             model.save(self.save_folder, overwrite=True, save_anndata=False)
 
     def predict(self, adata):
-        logging.info('Saving knn on scvi results to adata.obs["{}"]'.format(self.result_key))
+        logging.info(f'Saving knn on scvi results to adata.obs["{self.result_key}"]')
 
         ref_idx = adata.obs["_dataset"] == "ref"
         query_idx = adata.obs["_dataset"] == "query"
 
-        train_X = adata[ref_idx].obsm['X_scvi']
+        train_X = adata[ref_idx].obsm["X_scvi"]
         train_Y = adata[ref_idx].obs[self.labels_key].to_numpy()
-        test_X = adata[query_idx].obsm['X_scvi']
+        test_X = adata[query_idx].obsm["X_scvi"]
 
         knn = KNeighborsClassifier(**self.classifier_dict)
         knn.fit(train_X, train_Y)
@@ -123,11 +115,14 @@ class SCVI_POPV:
 
         # save_results
         adata.obs[self.result_key] = adata.obs[self.labels_key]
-        adata.obs[self.result_key][query_idx] = knn_pred
-
+        adata.obs.loc[query_idx, self.result_key] = knn_pred
 
     def compute_embedding(self, adata):
-        logging.info('Saving UMAP of scvi results to adata.obs["{}"]'.format(self.embedding_key))
+        logging.info(
+            f'Saving UMAP of scvi results to adata.obs["{self.embedding_key}"]'
+        )
 
         sc.pp.neighbors(adata, use_rep="X_scvi")
-        adata.obsm[self.embedding_key] = sc.tl.umap(adata, copy=True, **self.embedding_dict).obsm['X_umap']
+        adata.obsm[self.embedding_key] = sc.tl.umap(
+            adata, copy=True, **self.embedding_dict
+        ).obsm["X_umap"]

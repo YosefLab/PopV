@@ -1,10 +1,8 @@
-from ast import Pass
-import scanpy as sc
-import numpy as np
 import logging
+from ast import Pass
+from typing import Optional
 
 from sklearn.ensemble import RandomForestClassifier
-from typing import Optional, Literal
 
 
 class RF:
@@ -14,7 +12,8 @@ class RF:
         labels_key: Optional[str] = "_labels_annotation",
         layers_key: Optional[str] = "logcounts",
         result_key: Optional[str] = "popv_rf_prediction",
-        classifier_dict: Optional[str] = {}) -> None:
+        classifier_dict: Optional[str] = {},
+    ) -> None:
         """
         Class to compute KNN classifier after BBKNN integration.
 
@@ -45,9 +44,13 @@ class RF:
 
     def compute_integration(self, adata):
         Pass
-    
+
     def predict(self, adata):
-        logging.info('Computing random forest classifier. Storing prediction in adata.obs["{}"]'.format(self.result_key))
+        logging.info(
+            'Computing random forest classifier. Storing prediction in adata.obs["{}"]'.format(
+                self.result_key
+            )
+        )
 
         train_idx = adata.obs["_ref_subsample"]
         test_idx = adata.obs["_dataset"] == "query"
@@ -56,9 +59,7 @@ class RF:
         train_y = adata[train_idx].obs[self.labels_key].to_numpy()
         test_x = adata[test_idx].layers[self.layers_key]
 
-        rf = RandomForestClassifier(
-            **self.classifier_dict
-        )
+        rf = RandomForestClassifier(**self.classifier_dict)
         rf.fit(train_x, train_y)
         rf_pred = rf.predict(test_x)
 
