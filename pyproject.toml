@@ -6,16 +6,16 @@ skip_glob = ["popv/__init__.py"]
 
 [tool.poetry]
 name = "popv"
-authors = ["Galen Xing", "Alexaner Tarashansky <alexander.tarashansky@czbiohub.org>", "Can Ergen <canergen.ac@gmail.com>"]
+authors = ["Galen Xing", "Alexander Tarashansky <alexander.tarashansky@czbiohub.org>", "Can Ergen <canergen.ac@gmail.com>"]
 license = "BSD-3-Clause"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
   "Natural Language :: English",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9"
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8"
 ]
+
 description = "Automatic annotation of single cell data using a labelled reference dataset including various methods and giving certainty across those methods."
 packages = [
   {include = "popv"},

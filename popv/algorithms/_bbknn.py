@@ -65,8 +65,8 @@ class BBKNN:
         ref_idx = adata.obs["_dataset"] == "ref"
         query_idx = adata.obs["_dataset"] == "query"
 
-        ref_dist_idx = np.where(ref_idx == True)[0]
-        query_dist_idx = np.where(query_idx == True)[0]
+        ref_dist_idx = np.where(ref_idx is True)[0]
+        query_dist_idx = np.where(query_idx is True)[0]
 
         train_y = adata.obs.loc[ref_idx, self.labels_key].to_numpy()
         train_distances = distances[ref_dist_idx, :][:, ref_dist_idx]
