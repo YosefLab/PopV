@@ -25,16 +25,16 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.10"
-bbknn = "1.5.1"
+bbknn = "^1.5.1"
 black = {version = ">=22.3", optional = true}
 codecov = {version = ">=2.0.8", optional = true}
 flake8 = {version = ">=3.7.7", optional = true}
-gdown = "3.13.0"
-grpcio = "1.32.0"
-h5py = ">=2.9.0"
-huggingface-hub = "0.0.12"
+gdown = "^4.6.0"
+grpcio = "^1.51.1"
+h5py = "^3.7.0"
+huggingface-hub = "0.11.1"
 imgkit = "1.2.2"
-importlib-metadata = {version = "^1.0", python = "<3.8"}
+importlib-metadata = "4.2.0"
 ipython = {version = ">=7.20", optional = true, python = ">=3.7"}
 ipywidgets = "*"
 isort = {version = ">=5.7", optional = true}
@@ -44,23 +44,21 @@ nbconvert = {version = ">=5.4.0", optional = true}
 nbformat = {version = ">=4.4.0", optional = true}
 nbsphinx = {version = "*", optional = true}
 nbsphinx-link = {version = "*", optional = true}
-numpy = ">=1.19.2"
-obonet = "0.3.0"
-OnClass = "1.2"
+numpy = "1.21.6"
+onclass = "^1.2"
 pandas = ">=1.0"
 pre-commit = {version = ">=2.7.1", optional = true}
 pytest = {version = ">=4.4", optional = true}
 rich = ">=9.1.0"
-scanorama = "1.7.1"
-scanpy = ">1.8.0"
+scanorama = "^1.7.3"
+scanpy = "^1.9.1"
 scikit-learn = ">0.21.2,<1.0"
-scikit-misc = "0.1.4"
-scvi-tools = ">=0.15.0"
-tensorflow = ">=2.2.0"
-tensorboard = "2.2.2"
-tqdm = "4.64.0"
-transformers = "4.10.3"
+scikit-misc = ">=0.1"
+scvi-tools = ">=0.18.0"
 six = "1.15.0"
+tensorflow = "^2.11.0"
+tqdm = "4.64.0"
+transformers = "^4.25.1"
 typing-extensions = "4.2.0"
 
 [tool.poetry.extras]
