@@ -203,7 +203,7 @@ class Process_Query:
 
         # Remove any cell with expression below 10 counts.
         zero_cell_names = self.adata[self.adata.X.sum(1) < 10].obs_names
-        self.adata.uns["Filtered_cells"] = zero_cell_names
+        self.adata.uns["Filtered_cells"] = list(zero_cell_names)
         sc.pp.filter_cells(self.adata, min_counts=10, inplace=True)
         if len(zero_cell_names) > 0:
             logging.warning(
