@@ -7,13 +7,13 @@ Using this variety of algorithms, we compute the agreement between those algorit
 
 Currently implemented algorithms are:
 
--   K-nearest neighbor classification after dataset integration with [BBKNN](https://github.com/Teichlab/bbknn)
--   K-nearest neighbor classification after dataset integration with [SCANORAMA](https://github.com/brianhie/scanorama)
--   K-nearest neighbor classification after dataset integration with [scVI](https://github.com/scverse/scvi-tools)
--   Random forest classification
--   Support vector machine classification
--   [OnClass](https://github.com/wangshenguiuc/OnClass) cell type classification
--   [scANVI](https://github.com/scverse/scvi-tools) label transfer
+-   "knn_on_bbknn_pred"; K-nearest neighbor classification after dataset integration with [BBKNN](https://github.com/Teichlab/bbknn)
+-   "knn_on_scanorama_pred"; K-nearest neighbor classification after dataset integration with [SCANORAMA](https://github.com/brianhie/scanorama)
+-   "knn_on_scvi_pred"; K-nearest neighbor classification after dataset integration with [scVI](https://github.com/scverse/scvi-tools)
+-   "rf_pred"; Random forest classification
+-   "svm_pred"; Support vector machine classification
+-   "onclass_pred"; [OnClass](https://github.com/wangshenguiuc/OnClass) cell type classification
+-   "scanvi_pred"; [scANVI](https://github.com/scverse/scvi-tools) label transfer
 
 All algorithms are implemented as class in popv/algorithms.
 To implement a new method, a class has to have several methods:

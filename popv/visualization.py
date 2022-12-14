@@ -90,7 +90,7 @@ def _sample_report(adata, cell_type_key, score_key, pred_keys):
 def agreement_score_bar_plot(
     adata,
     popv_prediction_key: Optional[str] = "popv_prediction",
-    consensus_percentage_key: Optional[str] = "consensus_percentage",
+    consensus_score_key: Optional[str] = "popv_prediction_score",
     save_folder: Optional[str] = None,
 ):
     """
@@ -114,9 +114,12 @@ def agreement_score_bar_plot(
     mean_agreement = [
         np.mean(
             adata[
-                adata.obs["_dataset"] == "query" & adata.obs[popv_prediction_key] == x
+                np.logical_and(
+                    adata.obs["_dataset"] == "query",
+                    adata.obs[popv_prediction_key] == x,
+                )
             ]
-            .obs[consensus_percentage_key]
+            .obs[consensus_score_key]
             .astype(float)
         )
         for x in celltypes
@@ -176,7 +179,7 @@ def prediction_score_bar_plot(
 
 def make_agreement_plots(
     adata,
-    methods: list,
+    prediction_keys: list,
     popv_prediction_key: Optional[str] = "popv_prediction",
     save_folder: Optional[str] = None,
 ):
@@ -187,7 +190,7 @@ def make_agreement_plots(
     ----------
     adata
         AnnData object.
-    methods
+    prediction_keys
         List with key for methods for which confusion matrix is computed.
     popv_prediction_key
         Key in adata.obs for consensus prediction.
@@ -205,7 +208,7 @@ def make_agreement_plots(
     for num in fig_nums:
         plt.close(num)
 
-    for method in methods:
+    for method in prediction_keys:
         logging.info(f"Making confusion matrix for {method}")
         _prediction_eval(
             adata.obs[method],
@@ -213,7 +216,7 @@ def make_agreement_plots(
             name=method,
             x_label=method,
             y_label=popv_prediction_key,
-            res_dir=None,
+            res_dir=save_folder,
         )
 
 

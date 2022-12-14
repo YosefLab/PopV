@@ -7,6 +7,9 @@ import scanpy as sc
 from ._settings import Config
 
 from . import algorithms
+from . import annotation
+from . import preprocessing
+from . import visualization
 
 try:
     import importlib.metadata as importlib_metadata
@@ -20,8 +23,7 @@ Config.num_threads = 10
 sc.settings.n_jobs = Config.num_threads
 
 test_var = "test"
-# Jax sets the root logger, this prevents double output.
-scvi_logger = logging.getLogger("popv")
-scvi_logger.propagate = False
+popv_logger = logging.getLogger("popv")
+popv_logger.propagate = False
 
-__all__ = ["settings", "algorithms"]
+__all__ = ["settings", "algorithms", "annotation", "preprocessing", "visualization"]

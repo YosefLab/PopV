@@ -11,11 +11,11 @@ import anndata
 import networkx as nx
 import pandas as pd
 
-from popv import algorithms, utils
+from popv import _utils, algorithms
 
 
 def annotate_data(
-    adata: anndata.Anndata,
+    adata: anndata.AnnData,
     methods: Optional[list] = None,
     save_path: Optional[str] = None,
     methods_kwargs: Optional[dict] = None,
@@ -35,7 +35,7 @@ def annotate_data(
         Dictionary, where keys are used methods and values contain non-default parameters.
         Default to empty-dictionary.
     """
-    if not os.path.exists(save_path):
+    if save_path is not None and not os.path.exists(save_path):
         os.mkdir(save_path)
     methods = (
         methods
@@ -53,24 +53,24 @@ def annotate_data(
         all_prediction_keys += [current_method.result_key]
 
     # Here we compute the consensus statistics
-    print(all_prediction_keys)
+    logging.info(f"Using predictions {all_prediction_keys} for PopV consensus")
+    adata.uns["prediction_keys"] = all_prediction_keys
+    compute_consensus(adata, all_prediction_keys)
+    ontology_vote_onclass(adata, all_prediction_keys)
 
-    pred_keys = [key for key in adata.obs.keys() if key.startswith("popv_")]
-    compute_consensus(adata, pred_keys)
-    ontology_vote_onclass(adata, "popv_prediction", pred_keys)
+    if save_path is not None:
+        prediction_save_path = os.path.join(save_path, "predictions.csv")
+        adata[adata.obs._dataset == "query"].obs[
+            all_prediction_keys
+            + [
+                "popv_prediction",
+                "popv_prediction_score",
+                "popv_majority_vote_prediction",
+                "popv_majority_vote_score",
+            ]
+        ].to_csv(prediction_save_path)
 
-    prediction_save_path = os.path.join(save_path, "predictions.csv")
-    adata[adata.obs._dataset == "query"].obs[
-        pred_keys
-        + [
-            "popv_prediction",
-            "popv_prediction_score",
-            "popv_majority_vote_prediction",
-            "popv_majority_vote_score",
-        ]
-    ].to_csv(prediction_save_path)
-
-    logging.info(f"Predictions saved to {prediction_save_path}")
+        logging.info(f"Predictions saved to {prediction_save_path}")
 
 
 def compute_consensus(adata: anndata.AnnData, prediction_keys: list) -> None:
@@ -86,21 +86,23 @@ def compute_consensus(adata: anndata.AnnData, prediction_keys: list) -> None:
 
     Returns
     ----------
-    Saves the consensus prediction in adata.obs['consensus_prediction']
-    Saves the consensus percentage between methods in adata.obs['consensus_percentage']
+    Saves the consensus prediction in adata.obs['popv_majority_vote_prediction']
+    Saves the consensus percentage between methods in adata.obs['popv_majority_vote_score']
 
     """
-    consensus_prediction = adata.obs[prediction_keys].apply(utils.majority_vote, axis=1)
+    consensus_prediction = adata.obs[prediction_keys].apply(
+        _utils.majority_vote, axis=1
+    )
     adata.obs["popv_majority_vote_prediction"] = consensus_prediction
 
-    agreement = adata.obs[prediction_keys].apply(utils.majority_count, axis=1)
+    agreement = adata.obs[prediction_keys].apply(_utils.majority_count, axis=1)
     adata.obs["popv_majority_vote_score"] = agreement.values.round(2).astype(str)
 
 
 def ontology_vote_onclass(
     adata: anndata.AnnData,
     prediction_keys: list,
-    save_key: Optional[str] = "consensus_prediction",
+    save_key: Optional[str] = "popv_prediction",
 ):
     """
     Compute prediction using ontology aggregation method.
@@ -109,17 +111,17 @@ def ontology_vote_onclass(
     ----------
     adata
         AnnData object
-    save_key
-        Name of the field in adata.obs to store the consensus prediction.
     prediction_keys
         Keys in adata.obs containing predicted cell_types.
+    save_key
+        Name of the field in adata.obs to store the consensus prediction.
 
     Returns
     ----------
     Saves the consensus prediction in adata.obs[save_key]
-    Saves the consensus percentage between methods in adata.obs[save_key + '_percentage']
+    Saves the consensus percentage between methods in adata.obs[save_key + '_score']
     """
-    G = utils.make_ontology_dag(adata.uns["_cl_obo_file"])
+    G = _utils.make_ontology_dag(adata.uns["_cl_obo_file"])
     cell_type_root_to_node = {}
     aggregate_ontology_pred = []
     depths = {"cell": 0}
