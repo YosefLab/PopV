@@ -211,9 +211,6 @@ class Process_Query:
             )
 
         self.adata.layers["scvi_counts"] = self.adata.X.copy()
-        sc.pp.normalize_total(self.adata, target_sum=1e4)
-        sc.pp.log1p(self.adata)
-        self.adata.layers["logcounts"] = self.adata.X.copy()
 
         if self.hvg is not None:
             n_top_genes = np.min([self.hvg, self.adata.n_vars])
@@ -222,8 +219,11 @@ class Process_Query:
                 n_top_genes=n_top_genes,
                 subset=True,
                 layer="scvi_counts",
-                flavor="seurat",  # CAN switch back to seurat_v3 and add skmisc to dependencies
+                flavor="seurat_v3",
             )
+        sc.pp.normalize_total(self.adata, target_sum=1e4)
+        sc.pp.log1p(self.adata)
+        self.adata.layers["logcounts"] = self.adata.X.copy()
         sc.pp.scale(self.adata, max_value=10, zero_center=False)
         sc.tl.pca(self.adata)
 
