@@ -144,10 +144,28 @@ def test_svm():
     assert not adata.obs["popv_svm_prediction"].isnull().any()
 
 
+def test_annotation():
+    """Test Annotation and Plotting pipeline."""
+    adata = _get_test_anndata().adata
+    popv.annotation.annotate_data(
+        adata, methods=["svm_pred", "rf_pred"], save_path=None
+    )
+    popv.visualization.agreement_score_bar_plot(adata)
+    popv.visualization.prediction_score_bar_plot(adata)
+    popv.visualization.make_agreement_plots(
+        adata, prediction_keys=adata.uns["prediction_keys"]
+    )
+
+    assert "popv_majority_vote_prediction" in adata.obs.columns
+    assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
+
+
 if __name__ == "__main__":
+    test_bbknn()
     test_onclass()
     test_rf()
     test_scanorama()
     test_scanvi()
     test_scvi()
     test_svm()
+    test_annotation()
