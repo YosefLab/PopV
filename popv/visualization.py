@@ -177,6 +177,47 @@ def prediction_score_bar_plot(
     return ax
 
 
+def celltype_ratio_bar_plot(
+    adata,
+    popv_prediction: Optional[str] = "popv_prediction",
+    save_folder: Optional[str] = None,
+):
+    """
+    Create bar-plot of celltype rations in query as well as reference cells after running popv.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    popv_prediction
+        Key in adata.obs for predictions.
+    save_folder
+        Path to a folder for storing the plot. Defaults to None and plot is not stored.
+
+    Returns
+    ----------
+    Returns axis object of corresponding plot.
+
+    """
+    labels = adata.obs[popv_prediction].astype(str)
+    is_query = adata.obs._dataset == "query"
+    cell_types = np.unique(labels)
+    prop = pd.DataFrame(index=cell_types, columns=["ref", "query"])
+    for x in cell_types:
+        prop.loc[x, "query"] = np.sum(labels[is_query] == x)
+        prop.loc[x, "ref"] = np.sum(labels[~is_query] == x)
+
+    ax = prop.loc[cell_types].plot(
+        kind="bar", figsize=(len(cell_types) * 0.5, 4), logy=True
+    )
+    ax.set_ylabel("Celltype")
+    ax.set_ylabel("log Celltype Abundance")
+    if save_folder is not None:
+        save_path = os.path.join(save_folder, "celltype_prop_barplot.pdf")
+        ax.get_figure().savefig(save_path, bbox_inches="tight", dpi=300)
+    return ax
+
+
 def make_agreement_plots(
     adata,
     prediction_keys: list,

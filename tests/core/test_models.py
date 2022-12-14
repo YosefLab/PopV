@@ -155,6 +155,7 @@ def test_annotation():
     popv.visualization.make_agreement_plots(
         adata, prediction_keys=adata.uns["prediction_keys"]
     )
+    popv.visualization.celltype_ratio_bar_plot(adata)
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
