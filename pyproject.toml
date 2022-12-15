@@ -25,6 +25,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.10"
+anndata = "^0.8"
 bbknn = "^1.5.1"
 black = {version = ">=22.3", optional = true}
 codecov = {version = ">=2.0.8", optional = true}
@@ -54,7 +55,7 @@ scanorama = "^1.7.3"
 scanpy = "^1.9.1"
 scikit-learn = ">0.21.2,<1.0"
 scikit-misc = ">=0.1"
-scvi-tools = ">=0.18.0"
+scvi-tools = { git = "https://github.com/scverse/scvi-tools.git", branch = "valehvpa/scanvi_latent" }
 six = "1.15.0"
 tensorflow = "^2.11.0"
 tqdm = "4.64.0"

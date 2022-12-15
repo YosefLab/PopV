@@ -4445,15 +4445,13 @@ numpy = ">=1.16.5,<1.23.0"
 
 [[package]]
 name = "scvi-tools"
-version = "0.19.0"
+version = "0.19.0a0"
 description = "Deep probabilistic analysis of single-cell omics data."
 category = "main"
 optional = false
 python-versions = ">=3.7,<4.0"
-files = [
-    {file = "scvi-tools-0.19.0.tar.gz", hash = "sha256:f82d1beebf8d50dc9b9f9f093bb0b9430afbb81fa9d75d7a8c3daaabc020df31"},
-    {file = "scvi_tools-0.19.0-py3-none-any.whl", hash = "sha256:951abf0a11c2082c9e8fdc09a60de7449ce4168e7d1608c4568f85cf71e16b1d"},
-]
+files = []
+develop = false
 
 [package.dependencies]
 anndata = ">=0.7.5"
@@ -4473,7 +4471,7 @@ openpyxl = ">=3.0"
 optax = "*"
 pandas = ">=1.0"
 pyro-ppl = ">=1.6.0"
-pytorch-lightning = ">=1.7.0,<1.8"
+pytorch-lightning = ">=1.6.0,<1.8"
 rich = ">=9.1.0"
 scikit-learn = ">=0.21.2"
 torch = ">=1.8.0"
@@ -4481,10 +4479,16 @@ torchmetrics = ">=0.6.0"
 tqdm = ">=4.56.0"
 
 [package.extras]
-dev = ["black (>=22.3)", "codecov (>=2.0.8)", "flake8 (>=3.7.7)", "isort (>=5.7)", "jupyter (>=1.0)", "loompy (>=3.0.6)", "nbconvert (>=5.4.0)", "nbformat (>=4.4.0)", "pre-commit (>=2.7.1)", "pymde", "pytest (>=4.4)", "scanpy (>=1.6)"]
+dev = ["black (>=22.3)", "codecov (>=2.0.8)", "flake8 (>=3.7.7)", "isort (>=5.7)", "jupyter (>=1.0)", "loompy (>=3.0.6)", "nbconvert (>=5.4.0)", "nbformat (>=4.4.0)", "pre-commit (>=2.7.1)", "pytest (>=4.4)", "scanpy (>=1.6)"]
 docs = ["furo (>=2022.2.14.1)", "ipython (>=7.20)", "myst-parser", "nbsphinx", "sphinx (>=4.1)", "sphinx-autodoc-typehints", "sphinx-design", "sphinx-hoverxref", "sphinx_copybutton (<=0.3.1)", "sphinxcontrib-bibtex (>=1.0.0)", "sphinxext-opengraph", "typing_extensions"]
 pymde = ["pymde"]
 tutorials = ["leidenalg", "loompy (>=3.0.6)", "pymde", "pynndescent", "python-igraph", "scanpy (>=1.6)", "scikit-misc (>=0.1.3)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/scverse/scvi-tools.git"
+reference = "valehvpa/scanvi_latent"
+resolved_reference = "17bca72f9dcb984338bf9efe226f714b23376379"
 
 [[package]]
 name = "seaborn"
@@ -5824,4 +5828,4 @@ dev = ["black", "pytest", "flake8", "codecov", "jupyter", "nbformat", "nbconvert
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7,<3.10"
-content-hash = "cb11db4a96550641906fe2a74a3c6c3a9384268bb4f135156fffc6c047944a0a"
+content-hash = "32ebb7f52cc69dd7d58f7df7951427eb7fdac19b1197ec31abb4339dc4416dde"
