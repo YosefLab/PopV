@@ -61,9 +61,9 @@ class SCANVI_POPV:
 
         self.model_kwargs = {
             "dropout_rate": 0.1,
-            "dispersion": "gene-batch",
+            "dispersion": "gene",
             "n_layers": 2,
-            "n_latent": 20,
+            "n_latent": 50,
         }
         self.model_kwargs.update(model_kwargs)
 
@@ -92,10 +92,11 @@ class SCANVI_POPV:
                 batch_key=self.batch_key,
                 labels_key="subsampled_labels",
                 layer="scvi_counts",
+                size_factor_key="size_factor"
             )
             scvi_model = scvi.model.SCVI(adata, **self.model_kwargs)
             scvi_model.train(
-                train_size=1.0,
+                train_size=0.9,
                 max_epochs=self.n_epochs_unsupervised,
                 use_gpu=adata.uns["_use_gpu"],
             )

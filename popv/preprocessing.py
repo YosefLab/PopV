@@ -1,6 +1,7 @@
 import logging
 from typing import Optional
 
+import os
 import anndata
 import numpy as np
 import scanpy as sc
@@ -16,9 +17,9 @@ class Process_Query:
         query_adata: anndata.AnnData,
         ref_adata: anndata.AnnData,
         ref_labels_key: str,
-        cl_obo_file: Optional[str] = "ontology/cl.obo",
-        cl_ontology_file: Optional[str] = "ontology/cl.ontology",
-        nlp_emb_file: Optional[str] = "ontology/cl.ontology.nlp.emb",
+        cl_obo_file: Optional[str] = None,
+        cl_ontology_file: Optional[str] = None,
+        nlp_emb_file: Optional[str] = None,
         query_labels_key: Optional[str] = None,
         unknown_celltype_label: Optional[str] = "unknown",
         n_samples_per_label: Optional[int] = 100,
@@ -106,16 +107,21 @@ class Process_Query:
             ).adata
             assert (
                 pretrained_data.var_names == pretrained_data_scanvi.var_names
-            ), "Pretrained SCANVI and SCVI model contain different genes"
+            ), "Pretrained SCANVI and SCVI model contain different genes. This is not supported."
             assert (
                 pretrained_data.obs_names == pretrained_data_scanvi.obs_names
-            ), "Pretrained SCANVI and SCVI model contain different cells"
+            ), "Pretrained SCANVI and SCVI model contain different cells. This is not supported."
         self.hvg = hvg
         self.use_gpu = use_gpu
 
-        self.cl_obo_file = cl_obo_file
-        self.cl_ontology_file = cl_ontology_file
-        self.nlp_emb_file = nlp_emb_file
+        if cl_obo_file is None:
+            self.cl_obo_file = os.path.dirname(__file__) + "/ontology/cl.obo"
+            self.cl_ontology_file = os.path.dirname(__file__) + "/ontology/cl.ontology"
+            self.nlp_emb_file = os.path.dirname(__file__) + "/ontology/cl.ontology.nlp.emb"
+        else:
+            self.cl_obo_file = cl_obo_file
+            self.cl_ontology_file = cl_ontology_file
+            self.nlp_emb_file = nlp_emb_file
 
         self.check_validity_anndata(ref_adata, "reference")
         self.check_validity_anndata(query_adata, "query")
@@ -212,15 +218,20 @@ class Process_Query:
 
         self.adata.layers["scvi_counts"] = self.adata.X.copy()
 
-        if self.hvg is not None:
-            n_top_genes = np.min([self.hvg, self.adata.n_vars])
-            sc.pp.highly_variable_genes(
+        if self.hvg is not None and self.adata.n_vars>self.hvg:
+            self.adata.var['highly_variable'] = sc.pp.highly_variable_genes(
                 self.adata[self.adata.obs["_dataset"] == "ref"],
-                n_top_genes=n_top_genes,
-                subset=True,
+                n_top_genes=self.hvg,
+                subset=False,
                 layer="scvi_counts",
                 flavor="seurat_v3",
-            )
+                inplace=False
+            )['highly_variable']
+            self.adata = self.adata[:, self.adata.var['highly_variable']]
+
+        lib_size = self.adata.layers["scvi_counts"].sum(axis=1)
+        self.adata.obs["size_factor"] = np.squeeze(np.asarray(lib_size / np.mean(lib_size)))
+
         sc.pp.normalize_total(self.adata, target_sum=1e4)
         sc.pp.log1p(self.adata)
         self.adata.layers["logcounts"] = self.adata.X.copy()

@@ -56,9 +56,9 @@ class SCVI_POPV:
 
         self.model_kwargs = {
             "dropout_rate": 0.1,
-            "dispersion": "gene-batch",
+            "dispersion": "gene",
             "n_layers": 2,
-            "n_latent": 20,
+            "n_latent": 50,
         }
         self.model_kwargs.update(model_kwargs)
 
@@ -76,6 +76,7 @@ class SCVI_POPV:
             batch_key=self.batch_key,
             labels_key=self.labels_key,
             layer="scvi_counts",
+            size_factor_key="size_factor"
         )
         pretrained_scvi_path = adata.uns["_pretrained_scvi_path"]
 
@@ -91,7 +92,7 @@ class SCVI_POPV:
             self.max_epochs = np.min([round((20000 / adata.n_obs) * 200), 200])
 
         model.train(
-            max_epochs=self.max_epochs, train_size=1.0, use_gpu=adata.uns["_use_gpu"]
+            max_epochs=self.max_epochs, train_size=0.9, use_gpu=adata.uns["_use_gpu"]
         )
 
         adata.obsm["X_scvi"] = model.get_latent_representation(adata)
