@@ -110,7 +110,7 @@ def agreement_score_bar_plot(
     Returns axis of corresponding plot.
 
     """
-    celltypes = adata.obs[popv_prediction_key].unique()
+    celltypes = adata[adata.obs["_dataset"] == "query"].obs[popv_prediction_key].unique()
     mean_agreement = [
         np.mean(
             adata[
@@ -270,10 +270,7 @@ def _prediction_eval(
     res_dir="./",
 ):
     """Generate confusion matrix."""
-    x = np.concatenate([labels, pred])
-    types, _ = np.unique(x, return_inverse=True)
-    prop = np.asarray([np.mean(np.asarray(labels) == i) for i in types])
-    prop = pd.DataFrame([types, prop], index=["types", "prop"], columns=types).T
+    types, _ = np.unique(np.concatenate([labels, pred]), return_inverse=True)
     mtx = confusion_matrix(labels, pred, normalize="true")
     df = pd.DataFrame(mtx, columns=types, index=types)
     df = df.loc[np.unique(labels), np.unique(pred)]

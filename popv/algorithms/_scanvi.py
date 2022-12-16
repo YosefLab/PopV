@@ -84,6 +84,11 @@ class SCANVI_POPV:
             )
         ]
 
+        if self.n_epochs_unsupervised is None:
+            self.n_epochs_unsupervised = round(np.min(
+                [round((20000 / adata.n_obs) * 50), 50]
+            ))
+
         pretrained_scanvi_path = adata.uns["_pretrained_scanvi_path"]
 
         if pretrained_scanvi_path is None:
@@ -99,6 +104,7 @@ class SCANVI_POPV:
                 train_size=0.9,
                 max_epochs=self.n_epochs_unsupervised,
                 use_gpu=adata.uns["_use_gpu"],
+                plan_kwargs={"n_epochs_kl_warmup": 20}
             )
 
             self.model = scvi.model.SCANVI.from_scvi_model(
@@ -112,15 +118,11 @@ class SCANVI_POPV:
                 query, pretrained_scanvi_path, freeze_classifier=True
             )
 
-        if self.n_epochs_unsupervised is None:
-            self.n_epochs_unsupervised = np.min(
-                [round((20000 / adata.n_obs) * 200), 200]
-            )
-
         self.model.train(
             max_epochs=self.n_epochs_semisupervised,
             train_size=1.0,
             use_gpu=adata.uns["_use_gpu"],
+            plan_kwargs={"n_epochs_kl_warmup": 20}
         )
 
         adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)

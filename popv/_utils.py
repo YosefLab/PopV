@@ -149,7 +149,7 @@ def make_ontology_dag(obofile, lowercase=True):
     }
 
     # get all node ids that are celltypes (start with CL)
-    cl_ids = {id_: True for name, id_ in name_to_id.items() if id_.startswith("CL:")}
+    cl_ids = {id_: True for _, id_ in name_to_id.items() if id_.startswith("CL:")}
 
     # make new empty graph
     g = nx.MultiDiGraph()

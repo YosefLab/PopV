@@ -103,7 +103,7 @@ class Process_Query:
         if pretrained_scvi_path is not None and pretrained_scanvi_path is not None:
             pretrained_data = scvi.model.SCVI.load(self.pretrained_scvi_path).adata
             pretrained_data_scanvi = scvi.model.SCANVI.load(
-                self.pretrained_scvi_path
+                self.pretrained_scanvi_path
             ).adata
             assert (
                 pretrained_data.var_names == pretrained_data_scanvi.var_names
@@ -115,9 +115,9 @@ class Process_Query:
         self.use_gpu = use_gpu
 
         if cl_obo_file is None:
-            self.cl_obo_file = os.path.dirname(__file__) + "/ontology/cl.obo"
-            self.cl_ontology_file = os.path.dirname(__file__) + "/ontology/cl.ontology"
-            self.nlp_emb_file = os.path.dirname(__file__) + "/ontology/cl.ontology.nlp.emb"
+            self.cl_obo_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.obo"
+            self.cl_ontology_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology"
+            self.nlp_emb_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology.nlp.emb"
         else:
             self.cl_obo_file = cl_obo_file
             self.cl_ontology_file = cl_ontology_file
@@ -142,7 +142,7 @@ class Process_Query:
         assert adata.n_vars > 0, f"{input_type} anndata has no genes."
         if self.pretrained_scvi_path is not None:
             pretrained_data = scvi.model.SCVI.load(self.pretrained_scvi_path).adata
-            adata[:, pretrained_data.var_names].copy()
+            adata = adata[:, pretrained_data.var_names].copy()
             assert (
                 self.hvg is None
             ), "Highly variable gene selection is not available if using trained reference model."

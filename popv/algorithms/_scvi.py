@@ -13,7 +13,6 @@ class SCVI_POPV:
         batch_key: Optional[str] = "_batch_annotation",
         labels_key: Optional[str] = "_labels_annotation",
         max_epochs: Optional[int] = None,
-        use_gpu: Optional[bool] = False,
         save_folder: Optional[str] = None,
         result_key: Optional[str] = "popv_knn_on_scvi_prediction",
         embedding_key: Optional[str] = "X_scvi_umap_popv",
@@ -32,8 +31,6 @@ class SCVI_POPV:
             Key in obs field of adata for cell-type information.
         max_epochs
             Number of epochs scvi is trained.
-        use_gpu
-            Whether gpu is used for training.
         result_key
             Key in obs in which celltype annotation results are stored.
         embedding_key
@@ -51,7 +48,6 @@ class SCVI_POPV:
         self.embedding_key = embedding_key
 
         self.max_epochs = max_epochs
-        self.use_gpu = use_gpu
         self.save_folder = save_folder
 
         self.model_kwargs = {
@@ -89,10 +85,13 @@ class SCVI_POPV:
             logging.info("Training scvi online.")
 
         if self.max_epochs is None:
-            self.max_epochs = np.min([round((20000 / adata.n_obs) * 200), 200])
+            self.max_epochs = np.min([round((20000 / adata.n_obs) * 50), 50])
 
         model.train(
-            max_epochs=self.max_epochs, train_size=0.9, use_gpu=adata.uns["_use_gpu"]
+            max_epochs=round(self.max_epochs),
+            train_size=0.9,
+            use_gpu=adata.uns["_use_gpu"],
+            plan_kwargs={"n_epochs_kl_warmup": 20}
         )
 
         adata.obsm["X_scvi"] = model.get_latent_representation(adata)

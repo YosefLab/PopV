@@ -120,12 +120,14 @@ def ontology_vote_onclass(
     ----------
     Saves the consensus prediction in adata.obs[save_key]
     Saves the consensus percentage between methods in adata.obs[save_key + '_score']
+    Saves the overlap in original prediction in
     """
     G = _utils.make_ontology_dag(adata.uns["_cl_obo_file"])
     cell_type_root_to_node = {}
     aggregate_ontology_pred = []
-    depths = {"cell": 0}
+    depth = {"cell": 0}
     scores = []
+    depths = []
     for cell in adata.obs.index:
         score = defaultdict(lambda: 0)
         score["cell"] = 0
@@ -141,22 +143,25 @@ def ontology_vote_onclass(
                 if pred_key == "onclass_pred":
                     for ancestor_cell_type in root_to_node:
                         score[ancestor_cell_type] += 1
-                        depths[ancestor_cell_type] = len(
+                        depth[ancestor_cell_type] = len(
                             nx.shortest_path(G, ancestor_cell_type, "cell")
                         )
-                depths[cell_type] = len(nx.shortest_path(G, cell_type, "cell"))
+                depth[cell_type] = len(nx.shortest_path(G, cell_type, "cell"))
                 score[cell_type] += 1
-        aggregate_ontology_pred.append(
+        celltype_consensus = (
             max(
                 score,
                 key=lambda k: (
                     score[k],
-                    depths[k],
+                    depth[k],
                     26 - string.ascii_lowercase.index(cell_type[0]),
                 ),
             )
         )
-        scores.append(score[cell_type])
+        aggregate_ontology_pred.append(celltype_consensus)
+        scores.append(score[celltype_consensus])
+        depths.append(depth[celltype_consensus])
     adata.obs[save_key] = aggregate_ontology_pred
     adata.obs[save_key + "_score"] = scores
+    adata.obs[save_key + "_depth"] = depths
     return adata
