@@ -60,17 +60,18 @@ class SCANVI_POPV:
         self.save_folder = save_folder
 
         self.model_kwargs = {
-            "dropout_rate": 0.1,
+            "dropout_rate": 0.03,
             "dispersion": "gene",
-            "n_layers": 2,
+            "n_layers": 3,
             "n_latent": 50,
+            "gene_likelihood": "nb"
         }
         self.model_kwargs.update(model_kwargs)
 
         self.classifier_kwargs = {"n_layers": 1, "dropout_rate": 0.2}
         self.classifier_kwargs.update(classifier_kwargs)
 
-        self.embedding_dict = {"min_dist": 0.01}
+        self.embedding_dict = {"min_dist": 0.1}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
@@ -84,6 +85,10 @@ class SCANVI_POPV:
             )
         ]
 
+        if self.n_epochs_unsupervised is None:
+            self.n_epochs_unsupervised = round(np.min(
+                [round((20000 / adata.n_obs) * 100), 100]
+            ))
         if self.n_epochs_unsupervised is None:
             self.n_epochs_unsupervised = round(np.min(
                 [round((20000 / adata.n_obs) * 50), 50]

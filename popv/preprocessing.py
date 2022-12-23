@@ -106,10 +106,10 @@ class Process_Query:
                 self.pretrained_scanvi_path
             ).adata
             assert (
-                pretrained_data.var_names == pretrained_data_scanvi.var_names
+                list(pretrained_data.var_names) == list(pretrained_data_scanvi.var_names)
             ), "Pretrained SCANVI and SCVI model contain different genes. This is not supported."
             assert (
-                pretrained_data.obs_names == pretrained_data_scanvi.obs_names
+                list(pretrained_data.obs_names) == list(pretrained_data_scanvi.obs_names)
             ), "Pretrained SCANVI and SCVI model contain different cells. This is not supported."
         self.hvg = hvg
         self.use_gpu = use_gpu
@@ -123,8 +123,8 @@ class Process_Query:
             self.cl_ontology_file = cl_ontology_file
             self.nlp_emb_file = nlp_emb_file
 
-        self.check_validity_anndata(ref_adata, "reference")
-        self.check_validity_anndata(query_adata, "query")
+        self.check_validity_anndata(self.ref_adata, "reference")
+        self.check_validity_anndata(self.query_adata, "query")
 
         self.setup_dataset(self.query_adata, "query", add_meta="_query")
         self.setup_dataset(self.ref_adata, "reference")
@@ -140,15 +140,6 @@ class Process_Query:
         ), f"{input_type} dataset contains multiple genes with same gene name."
         assert adata.n_obs > 0, f"{input_type} anndata has no cells."
         assert adata.n_vars > 0, f"{input_type} anndata has no genes."
-        if self.pretrained_scvi_path is not None:
-            pretrained_data = scvi.model.SCVI.load(self.pretrained_scvi_path).adata
-            adata = adata[:, pretrained_data.var_names].copy()
-            assert (
-                self.hvg is None
-            ), "Highly variable gene selection is not available if using trained reference model."
-            assert (
-                adata.var_names == pretrained_data.var_names
-            ), "Query dataset misses genes that were used for reference model training. Retrain reference model or set online=False"
 
     def setup_dataset(self, adata, key, add_meta=""):
         if isinstance(self.batch_key[key], list):
@@ -180,6 +171,15 @@ class Process_Query:
                 ignore_label=[self.unknown_celltype_label],
             )
             adata.obs.loc[subsample_idx, "_ref_subsample"] = True
+        if self.pretrained_scvi_path is not None:
+            pretrained_data = scvi.model.SCVI.load(self.pretrained_scvi_path).adata
+            adata = adata[:, pretrained_data.var_names].copy()
+            assert (
+                self.hvg is None
+            ), "Highly variable gene selection is not available if using trained reference model."
+            assert (
+                list(adata.var_names) == list(pretrained_data.var_names)
+            ), "Query dataset misses genes that were used for reference model training. Retrain reference model or set online=False"
 
     def preprocess(self):
         self.ref_adata = self.ref_adata[
@@ -197,6 +197,11 @@ class Process_Query:
             join="outer",
             fill_value=self.unknown_celltype_label,
         )
+
+        if self.pretrained_scvi_path is not None:
+            pretrained_data = scvi.model.SCVI.load(self.pretrained_scvi_path).adata
+            self.adata = self.adata[:, pretrained_data.var_names].copy()
+
         self.adata.obs[self.labels_key["reference"]] = self.adata.obs[
             self.labels_key["reference"]
         ].astype("category")
@@ -219,14 +224,17 @@ class Process_Query:
         self.adata.layers["scvi_counts"] = self.adata.X.copy()
 
         if self.hvg is not None and self.adata.n_vars>self.hvg:
-            self.adata.var['highly_variable'] = sc.pp.highly_variable_genes(
-                self.adata[self.adata.obs["_dataset"] == "ref"],
+            sc.pp.filter_genes(self.adata, min_counts=20, inplace=True)
+            self.adata.var['highly_variable'] = sc.experimental.pp.highly_variable_genes(
+                self.adata[self.adata.obs["_dataset"] == "ref"].copy(),
                 n_top_genes=self.hvg,
                 subset=False,
                 layer="scvi_counts",
-                flavor="seurat_v3",
-                inplace=False
+                flavor="pearson_residuals",
+                inplace=False,
+                batch_key="_batch_annotation",
             )['highly_variable']
+
             self.adata = self.adata[:, self.adata.var['highly_variable']]
 
         lib_size = self.adata.layers["scvi_counts"].sum(axis=1)

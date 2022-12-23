@@ -49,7 +49,7 @@ class BBKNN:
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         self.classifier_dict.update(classifier_dict)
 
-        self.embedding_dict = {"min_dist": 0.01}
+        self.embedding_dict = {"min_dist": 0.1}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
