@@ -12,7 +12,7 @@ class BBKNN:
         batch_key: Optional[str] = "_batch_annotation",
         labels_key: Optional[str] = "_labels_annotation",
         result_key: Optional[str] = "popv_knn_on_bbknn_prediction",
-        embedding_key: Optional[str] = "X_umap_bbknn_popv",
+        embedding_key: Optional[str] = "X_bbknn_umap_popv",
         method_dict: Optional[dict] = {},
         classifier_dict: Optional[dict] = {},
         embedding_dict: Optional[dict] = {},
@@ -43,19 +43,23 @@ class BBKNN:
         self.result_key = result_key
         self.embedding_key = embedding_key
 
-        self.method_dict = {"metric": "angular", "n_pcs": 20}
+        self.method_dict = {"metric": "angular", "n_pcs": 50, "neighbors_within_batch": 5}
         self.method_dict.update(method_dict)
 
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         self.classifier_dict.update(classifier_dict)
 
-        self.embedding_dict = {"min_dist": 0.1}
+        self.embedding_dict = {"min_dist": 0.5}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
         logging.info("Integrating data with bbknn")
 
-        sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_dict)
+        sc.external.pp.bbknn(
+            adata,
+            batch_key=self.batch_key,
+            **self.method_dict
+        )
 
     def predict(self, adata):
         logging.info(f'Saving knn on bbknn results to adata.obs["{self.result_key}"]')

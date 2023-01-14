@@ -1,4 +1,6 @@
 import logging
+import scipy
+import numpy as np
 from typing import Optional
 
 import obonet
@@ -11,7 +13,7 @@ class ONCLASS:
         batch_key: Optional[str] = "_batch_annotation",
         labels_key: Optional[str] = "_labels_annotation",
         layers_key: Optional[str] = None,
-        max_iter: Optional[int] = 20,
+        max_iter: Optional[int] = 30,
         cell_ontology_obs_key: Optional[str] = None,
         result_key: Optional[str] = "popv_onclass_prediction",
     ) -> None:
@@ -43,7 +45,7 @@ class ONCLASS:
             self.cell_ontology_obs_key = self.labels_key + "_cell_ontology_id"
         else:
             self.cell_ontology_obs_key = cell_ontology_obs_key
-        self.shard_size = 10000
+        self.shard_size = 50000
         self.max_iter = max_iter
 
     def make_celltype_to_cell_ontology_id_dict(self, cl_obo_file):
@@ -125,19 +127,23 @@ class ONCLASS:
         test_idx = adata.obs["_dataset"] == "query"
 
         if self.layers_key is None:
-            train_X = adata[train_idx].X.todense()
-            test_X = adata[test_idx].X.todense()
+            train_X = adata[train_idx].layers['logcounts'].copy()
+            test_X = adata[test_idx].layers['logcounts'].copy()
         else:
-            train_X = adata[train_idx].layers[self.layers_key].todense()
-            test_X = adata[test_idx].layers[self.layers_key].todense()
+            train_X = adata[train_idx].layers[self.layers_key].copy()
+            test_X = adata[test_idx].layers[self.layers_key].copy()
+        if scipy.sparse.issparse(train_X):
+            train_X = train_X.todense()
+            test_X = test_X.todense()
+        
 
         train_Y = adata[train_idx].obs[self.cell_ontology_obs_key]
 
-        test_adata = adata[test_idx]
+        test_adata = adata[test_idx].copy()
 
         _ = train_model.EmbedCellTypes(train_Y)
         model_path = "OnClass"
-
+        
         (
             corr_train_feature,
             corr_test_feature,
@@ -149,12 +155,16 @@ class ONCLASS:
             adata.var_names,
             test_feature=test_X,
             test_genes=adata.var_names,
+            log_transform=False
         )
         train_model.BuildModel(ngene=len(corr_train_genes))
 
-        train_model.Train(
-            corr_train_feature, train_Y, save_model=model_path, max_iter=self.max_iter
-        )
+        if adata.uns['_pretrained_onclass_path'] is None:
+            train_model.Train(
+                corr_train_feature, train_Y, save_model=model_path, max_iter=self.max_iter
+            )
+        else:
+            model_path = adata.uns['pretrained_onclass_model']
 
         test_adata.obs[self.result_key] = None
 
@@ -171,9 +181,8 @@ class ONCLASS:
                 onclass_pred = train_model.Predict(tmp_X, use_normalize=False)
                 pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
                 pred_label_str = [clid_2_name[ind] for ind in pred_label]
-                test_adata.obs[self.result_key][
-                    i : i + self.shard_size
-                ] = pred_label_str
+                test_adata.obs.loc[
+                    test_adata.obs.index[i : i + self.shard_size], self.result_key] = pred_label_str
         else:
             onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False)
             pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]

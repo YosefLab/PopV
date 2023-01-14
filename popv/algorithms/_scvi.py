@@ -51,10 +51,10 @@ class SCVI_POPV:
         self.save_folder = save_folder
 
         self.model_kwargs = {
-            "dropout_rate": 0.03,
+            "dropout_rate": 0.05,
             "dispersion": "gene",
-            "n_layers": 3,
-            "n_latent": 50,
+            "n_layers": 2,
+            "n_latent": 20,
             "gene_likelihood": "nb"
         }
 
@@ -63,7 +63,7 @@ class SCVI_POPV:
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         self.classifier_dict.update(classifier_dict)
 
-        self.embedding_dict = {"min_dist": 0.1}
+        self.embedding_dict = {"min_dist": 0.3}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
@@ -73,8 +73,7 @@ class SCVI_POPV:
             adata,
             batch_key=self.batch_key,
             labels_key=self.labels_key,
-            layer="scvi_counts",
-            size_factor_key="size_factor"
+            layer="scvi_counts"
         )
         pretrained_scvi_path = adata.uns["_pretrained_scvi_path"]
 
@@ -87,13 +86,13 @@ class SCVI_POPV:
             logging.info("Training scvi online.")
 
         if self.max_epochs is None:
-            self.max_epochs = np.min([round((20000 / adata.n_obs) * 100), 100])
+            self.max_epochs = min(round((20000 / adata.n_obs) * 200), 200)
 
         model.train(
             max_epochs=round(self.max_epochs),
             train_size=0.9,
             use_gpu=adata.uns["_use_gpu"],
-            plan_kwargs={"n_epochs_kl_warmup": 20}
+            plan_kwargs={"n_epochs_kl_warmup": min(20, self.max_epochs)}
         )
 
         adata.obsm["X_scvi"] = model.get_latent_representation(adata)

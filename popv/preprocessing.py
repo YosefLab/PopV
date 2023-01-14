@@ -22,13 +22,14 @@ class Process_Query:
         nlp_emb_file: Optional[str] = None,
         query_labels_key: Optional[str] = None,
         unknown_celltype_label: Optional[str] = "unknown",
-        n_samples_per_label: Optional[int] = 100,
+        n_samples_per_label: Optional[int] = 300,
         ref_batch_key: str = "donor_method",
         query_batch_key: Optional[str] = None,
         save_folder: str = "results_popv",
         query_layers_key=None,
         pretrained_scvi_path: Optional[str] = None,
         pretrained_scanvi_path: Optional[str] = None,
+        pretrained_onclass_path: Optional[str] = None,
         hvg: Optional[int] = 4000,
         use_gpu: Optional[bool] = False,
     ) -> None:
@@ -78,6 +79,10 @@ class Process_Query:
             pretrained_path is set and all the genes in the pretrained models are present
             in query adata, will train the scARCHES version of scVI and scANVI, resulting in
             faster training times.
+        pretrained_onclass_path
+            If path is None, will train OnClass from scratch. Else if
+            pretrained_path is set and all the genes in the pretrained models are present
+            in query adata, will predict cell types using the existing model.
         hvg
             If Int, subsets data to n highly variable genes according to `sc.pp.highly_variable_genes`
         use_gpu
@@ -100,6 +105,7 @@ class Process_Query:
         self.save_folder = save_folder
         self.pretrained_scvi_path = pretrained_scvi_path
         self.pretrained_scanvi_path = pretrained_scanvi_path
+        self.pretrained_onclass_path = pretrained_onclass_path
         if pretrained_scvi_path is not None and pretrained_scanvi_path is not None:
             pretrained_data = scvi.model.SCVI.load(self.pretrained_scvi_path).adata
             pretrained_data_scanvi = scvi.model.SCANVI.load(
@@ -107,10 +113,15 @@ class Process_Query:
             ).adata
             assert (
                 list(pretrained_data.var_names) == list(pretrained_data_scanvi.var_names)
-            ), "Pretrained SCANVI and SCVI model contain different genes. This is not supported."
+            ), "Pretrained SCANVI and SCVI model contain different genes. This is not supported. Check models."
             assert (
                 list(pretrained_data.obs_names) == list(pretrained_data_scanvi.obs_names)
-            ), "Pretrained SCANVI and SCVI model contain different cells. This is not supported."
+            ), "Pretrained SCANVI and SCVI model contain different cells. This is not supported. Check models."
+        if pretrained_onclass_path is not None:
+            onclass_model = np.load(pretrained_onclass_path + "OnClass.npz", allow_pickle=True)
+            assert (
+                list(onclass_model['genes']) == list(pretrained_data_scanvi.var_names)
+            ), "Pretrained SCANVI and OnClass model contain different genes. This is not supported. Retrain OnClass."
         self.hvg = hvg
         self.use_gpu = use_gpu
 
@@ -159,18 +170,23 @@ class Process_Query:
 
         adata.obs["_labels_annotation"] = self.unknown_celltype_label
         if self.labels_key[key] is not None:
-            adata.obs["_labels_annotation"] = adata.obs[self.labels_key[key]]
+            adata.obs["_labels_annotation"] = adata.obs[self.labels_key[key]].astype('category')
 
         # subsample the reference cells used for training certain models
-        adata.obs["_ref_subsample"] = False
-        if self.n_samples_per_label is not None and key == "reference":
-            subsample_idx = _utils.subsample_dataset(
-                adata,
-                self.labels_key[key],
-                n_samples_per_label=self.n_samples_per_label,
-                ignore_label=[self.unknown_celltype_label],
-            )
-            adata.obs.loc[subsample_idx, "_ref_subsample"] = True
+        if key == "reference":
+            if self.n_samples_per_label is not None:
+                adata.obs["_ref_subsample"] = False
+                subsample_idx = _utils.subsample_dataset(
+                    adata,
+                    self.labels_key[key],
+                    n_samples_per_label=self.n_samples_per_label,
+                    ignore_label=[self.unknown_celltype_label],
+                )
+                adata.obs.loc[subsample_idx, "_ref_subsample"] = True
+            else:
+                adata.obs["_ref_subsample"] = True
+        else:
+            adata.obs["_ref_subsample"] = False
         if self.pretrained_scvi_path is not None:
             pretrained_data = scvi.model.SCVI.load(self.pretrained_scvi_path).adata
             adata = adata[:, pretrained_data.var_names].copy()
@@ -225,22 +241,18 @@ class Process_Query:
 
         if self.hvg is not None and self.adata.n_vars>self.hvg:
             sc.pp.filter_genes(self.adata, min_counts=20, inplace=True)
-            self.adata.var['highly_variable'] = sc.experimental.pp.highly_variable_genes(
-                self.adata[self.adata.obs["_dataset"] == "ref"].copy(),
+            self.adata.var['highly_variable'] = sc.pp.highly_variable_genes(
+                self.adata[self.adata.obs["_dataset"] =="ref"],
                 n_top_genes=self.hvg,
                 subset=False,
                 layer="scvi_counts",
-                flavor="pearson_residuals",
+                flavor='seurat_v3',
                 inplace=False,
                 batch_key="_batch_annotation",
             )['highly_variable']
+            self.adata = self.adata[:, self.adata.var['highly_variable']].copy()
 
-            self.adata = self.adata[:, self.adata.var['highly_variable']]
-
-        lib_size = self.adata.layers["scvi_counts"].sum(axis=1)
-        self.adata.obs["size_factor"] = np.squeeze(np.asarray(lib_size / np.mean(lib_size)))
-
-        sc.pp.normalize_total(self.adata, target_sum=1e4)
+        sc.pp.normalize_total(self.adata)
         sc.pp.log1p(self.adata)
         self.adata.layers["logcounts"] = self.adata.X.copy()
         sc.pp.scale(self.adata, max_value=10, zero_center=False)
@@ -250,6 +262,7 @@ class Process_Query:
         self.adata.uns["unknown_celltype_label"] = self.unknown_celltype_label
         self.adata.uns["_pretrained_scvi_path"] = self.pretrained_scvi_path
         self.adata.uns["_pretrained_scanvi_path"] = self.pretrained_scanvi_path
+        self.adata.uns["_pretrained_onclass_path"] = self.pretrained_onclass_path
         self.adata.uns["_cl_obo_file"] = self.cl_obo_file
         self.adata.uns["_cl_ontology_file"] = self.cl_ontology_file
         self.adata.uns["_nlp_emb_file"] = self.nlp_emb_file

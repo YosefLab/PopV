@@ -4,6 +4,7 @@ from typing import Optional
 import numpy as np
 import scanpy as sc
 import scvi
+import torch
 
 
 class SCANVI_POPV:
@@ -58,20 +59,20 @@ class SCANVI_POPV:
         self.n_epochs_semisupervised = n_epochs_semisupervised
         self.use_gpu = use_gpu
         self.save_folder = save_folder
-
+        
         self.model_kwargs = {
-            "dropout_rate": 0.03,
+            "dropout_rate": 0.05,
             "dispersion": "gene",
-            "n_layers": 3,
-            "n_latent": 50,
+            "n_layers": 2,
+            "n_latent": 20,
             "gene_likelihood": "nb"
         }
         self.model_kwargs.update(model_kwargs)
 
-        self.classifier_kwargs = {"n_layers": 1, "dropout_rate": 0.2}
+        self.classifier_kwargs = {"n_layers": 3, "dropout_rate": 0.2}
         self.classifier_kwargs.update(classifier_kwargs)
 
-        self.embedding_dict = {"min_dist": 0.1}
+        self.embedding_dict = {"min_dist": 0.3}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
@@ -84,15 +85,20 @@ class SCANVI_POPV:
                 adata.obs["_labels_annotation"], adata.obs["_ref_subsample"]
             )
         ]
+        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype('category')
+        yprior = torch.tensor([
+            adata.obs['_labels_annotation'].value_counts()[i]/adata.n_obs for i in 
+            adata.obs['subsampled_labels'].cat.categories
+            if i is not adata.uns['unknown_celltype_label']])
 
         if self.n_epochs_unsupervised is None:
-            self.n_epochs_unsupervised = round(np.min(
-                [round((20000 / adata.n_obs) * 100), 100]
-            ))
+            self.n_epochs_unsupervised = round(min(
+                round((10000 / adata.n_obs) * 200), 200)
+            )
         if self.n_epochs_unsupervised is None:
-            self.n_epochs_unsupervised = round(np.min(
-                [round((20000 / adata.n_obs) * 50), 50]
-            ))
+            self.n_epochs_unsupervised = round(min(
+                round((20000 / adata.n_obs) * 200), 200)
+            )
 
         pretrained_scanvi_path = adata.uns["_pretrained_scanvi_path"]
 
@@ -101,12 +107,11 @@ class SCANVI_POPV:
                 adata,
                 batch_key=self.batch_key,
                 labels_key="subsampled_labels",
-                layer="scvi_counts",
-                size_factor_key="size_factor"
+                layer="scvi_counts"
             )
             scvi_model = scvi.model.SCVI(adata, **self.model_kwargs)
             scvi_model.train(
-                train_size=0.9,
+                train_size=1.0,
                 max_epochs=self.n_epochs_unsupervised,
                 use_gpu=adata.uns["_use_gpu"],
                 plan_kwargs={"n_epochs_kl_warmup": 20}
@@ -116,15 +121,18 @@ class SCANVI_POPV:
                 scvi_model,
                 unlabeled_category=adata.uns["unknown_celltype_label"],
                 classifier_parameters=self.classifier_kwargs,
+                y_prior=yprior
             )
         else:
             query = adata[adata.obs["_dataset"] == "query"].copy()
             self.model = scvi.model.SCANVI.load_query_data(
-                query, pretrained_scanvi_path, freeze_classifier=True
+                query, pretrained_scanvi_path, freeze_classifier=True,
             )
 
         self.model.train(
             max_epochs=self.n_epochs_semisupervised,
+            batch_size=512,
+            n_samples_per_label=20,
             train_size=1.0,
             use_gpu=adata.uns["_use_gpu"],
             plan_kwargs={"n_epochs_kl_warmup": 20}
