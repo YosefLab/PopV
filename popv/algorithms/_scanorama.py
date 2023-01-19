@@ -87,8 +87,8 @@ class SCANORAMA:
         logging.info(
             f'Saving UMAP of scanorama results to adata.obs["{embedding_key}"]'
         )
-
-        sc.pp.neighbors(adata, use_rep="X_scanorama")
-        adata.obsm[embedding_key] = sc.tl.umap(
-            adata, copy=True, **self.embedding_dict
-        ).obsm["X_umap"]
+        if adata.uns['_compute_embedding']:
+            sc.pp.neighbors(adata, use_rep="X_scanorama")
+            adata.obsm[embedding_key] = sc.tl.umap(
+                adata, copy=True, **self.embedding_dict
+            ).obsm["X_umap"]

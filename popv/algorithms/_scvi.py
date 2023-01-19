@@ -94,11 +94,11 @@ class SCVI_POPV:
             use_gpu=adata.uns["_use_gpu"],
             plan_kwargs={"n_epochs_kl_warmup": min(20, self.max_epochs)}
         )
+        
+        if adata.uns['_save_path_trained_models'] is not None:
+            model.save(adata.uns['_save_path_trained_models'] + '/scvi', save_anndata=False, overwrite=True)
 
         adata.obsm["X_scvi"] = model.get_latent_representation(adata)
-
-        if self.save_folder is not None:
-            model.save(self.save_folder, overwrite=True, save_anndata=False)
 
     def predict(self, adata):
         logging.info(f'Saving knn on scvi results to adata.obs["{self.result_key}"]')
@@ -122,8 +122,8 @@ class SCVI_POPV:
         logging.info(
             f'Saving UMAP of scvi results to adata.obs["{self.embedding_key}"]'
         )
-
-        sc.pp.neighbors(adata, use_rep="X_scvi")
-        adata.obsm[self.embedding_key] = sc.tl.umap(
-            adata, copy=True, **self.embedding_dict
-        ).obsm["X_umap"]
+        if adata.uns['_compute_embedding']:
+            sc.pp.neighbors(adata, use_rep="X_scvi")
+            adata.obsm[self.embedding_key] = sc.tl.umap(
+                adata, copy=True, **self.embedding_dict
+            ).obsm["X_umap"]

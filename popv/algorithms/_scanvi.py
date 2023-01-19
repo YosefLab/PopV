@@ -69,7 +69,7 @@ class SCANVI_POPV:
         }
         self.model_kwargs.update(model_kwargs)
 
-        self.classifier_kwargs = {"n_layers": 3, "dropout_rate": 0.2}
+        self.classifier_kwargs = {"n_layers": 3, "dropout_rate": 0.1}
         self.classifier_kwargs.update(classifier_kwargs)
 
         self.embedding_dict = {"min_dist": 0.3}
@@ -137,11 +137,11 @@ class SCANVI_POPV:
             use_gpu=adata.uns["_use_gpu"],
             plan_kwargs={"n_epochs_kl_warmup": 20}
         )
+        
+        if adata.uns['_save_path_trained_models'] is not None:
+            self.model.save(adata.uns['_save_path_trained_models'] + '/scanvi', save_anndata=False, overwrite=True)
 
         adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)
-
-        if self.save_folder is not None:
-            self.model.save(self.save_folder, overwrite=True, save_anndata=False)
 
     def predict(self, adata):
         logging.info(
@@ -156,8 +156,8 @@ class SCANVI_POPV:
                 self.embedding_key
             )
         )
-
-        sc.pp.neighbors(adata, use_rep="X_scanvi")
-        adata.obsm[self.embedding_key] = sc.tl.umap(
-            adata, copy=True, **self.embedding_dict
-        ).obsm["X_umap"]
+        if adata.uns['_compute_embedding']:
+            sc.pp.neighbors(adata, use_rep="X_scanvi")
+            adata.obsm[self.embedding_key] = sc.tl.umap(
+                adata, copy=True, **self.embedding_dict
+            ).obsm["X_umap"]

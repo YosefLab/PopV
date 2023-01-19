@@ -142,7 +142,10 @@ class ONCLASS:
         test_adata = adata[test_idx].copy()
 
         _ = train_model.EmbedCellTypes(train_Y)
-        model_path = "OnClass"
+        if adata.uns['_save_path_trained_models'] is not None:
+            model_path = adata.uns['_save_path_trained_models'] + "/OnClass"
+        else:
+            model_path = "tmp_onclass/OnClass"
         
         (
             corr_train_feature,
@@ -157,14 +160,15 @@ class ONCLASS:
             test_genes=adata.var_names,
             log_transform=False
         )
-        train_model.BuildModel(ngene=len(corr_train_genes))
 
         if adata.uns['_pretrained_onclass_path'] is None:
+            train_model.BuildModel(ngene=len(corr_train_genes))
             train_model.Train(
                 corr_train_feature, train_Y, save_model=model_path, max_iter=self.max_iter
             )
         else:
-            model_path = adata.uns['pretrained_onclass_model']
+            model_path = adata.uns['_pretrained_onclass_path']
+            train_model.BuildModel(ngene=len(corr_train_genes), use_pretrain=model_path)
 
         test_adata.obs[self.result_key] = None
 

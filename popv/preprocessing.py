@@ -25,13 +25,14 @@ class Process_Query:
         n_samples_per_label: Optional[int] = 300,
         ref_batch_key: str = "donor_method",
         query_batch_key: Optional[str] = None,
-        save_folder: str = "results_popv",
         query_layers_key=None,
         pretrained_scvi_path: Optional[str] = None,
         pretrained_scanvi_path: Optional[str] = None,
         pretrained_onclass_path: Optional[str] = None,
+        save_path_trained_models: Optional[str] = None,
         hvg: Optional[int] = 4000,
         use_gpu: Optional[bool] = False,
+        compute_embedding: Optional[bool] = True,
     ) -> None:
         """
         Processes the query and reference dataset in preperation for the annotation pipeline.
@@ -65,8 +66,6 @@ class Process_Query:
             use as batch covariate
         query_batch_key
             Key in obs field of query adata for batch information.
-        save_folder
-            Folder to save data to
         query_layers_key
             If not None, will use data from query_adata.layers[query_layers_key].
         pretrained_scvi_path
@@ -87,6 +86,8 @@ class Process_Query:
             If Int, subsets data to n highly variable genes according to `sc.pp.highly_variable_genes`
         use_gpu
             If gpu is used to train scVI and scANVI model
+        compute_embedding
+            Whether UMAP is computed for all integration methods (BBKNN, SCANORAMA, SCANVI, SCVI)
         """
 
         self.query_adata = query_adata.copy()
@@ -102,11 +103,11 @@ class Process_Query:
         self.batch_key = {"reference": ref_batch_key, "query": query_batch_key}
         self.dataset_prepared = False
 
-        self.save_folder = save_folder
         self.pretrained_scvi_path = pretrained_scvi_path
         self.pretrained_scanvi_path = pretrained_scanvi_path
         self.pretrained_onclass_path = pretrained_onclass_path
-        if pretrained_scvi_path is not None and pretrained_scanvi_path is not None:
+        self.save_path_trained_models = save_path_trained_models
+        if pretrained_scvi_path is not None:
             pretrained_data = scvi.model.SCVI.load(self.pretrained_scvi_path).adata
             pretrained_data_scanvi = scvi.model.SCANVI.load(
                 self.pretrained_scanvi_path
@@ -118,12 +119,14 @@ class Process_Query:
                 list(pretrained_data.obs_names) == list(pretrained_data_scanvi.obs_names)
             ), "Pretrained SCANVI and SCVI model contain different cells. This is not supported. Check models."
         if pretrained_onclass_path is not None:
-            onclass_model = np.load(pretrained_onclass_path + "OnClass.npz", allow_pickle=True)
-            assert (
-                list(onclass_model['genes']) == list(pretrained_data_scanvi.var_names)
-            ), "Pretrained SCANVI and OnClass model contain different genes. This is not supported. Retrain OnClass."
+            onclass_model = np.load(pretrained_onclass_path + ".npz", allow_pickle=True)
+            if pretrained_scanvi_path is not None:
+                assert (
+                    list(onclass_model['genes']) == list(pretrained_data_scanvi.var_names)
+                ), "Pretrained SCANVI and OnClass model contain different genes. This is not supported. Retrain OnClass."
         self.hvg = hvg
         self.use_gpu = use_gpu
+        self.compute_embedding = compute_embedding
 
         if cl_obo_file is None:
             self.cl_obo_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.obo"
@@ -196,6 +199,15 @@ class Process_Query:
             assert (
                 list(adata.var_names) == list(pretrained_data.var_names)
             ), "Query dataset misses genes that were used for reference model training. Retrain reference model or set online=False"
+        elif self.pretrained_onclass_path is not None:
+            onclass_model = np.load(self.pretrained_onclass_path + ".npz", allow_pickle=True)
+            adata = adata[:, onclass_model['genes']].copy()
+            assert (
+                self.hvg is None
+            ), "Highly variable gene selection is not available if using trained reference model."
+            assert (
+                list(adata.var_names) == list(onclass_model['genes'])
+            ), "Query dataset misses genes that were used for reference model training. Retrain reference model or set online=False"
 
     def preprocess(self):
         self.ref_adata = self.ref_adata[
@@ -213,6 +225,16 @@ class Process_Query:
             join="outer",
             fill_value=self.unknown_celltype_label,
         )
+        
+        batch_before_filtering = set(self.adata.obs['_batch_annotation'])
+        self.adata = self.adata[self.adata.obs['_batch_annotation'].isin(
+            self.adata.obs['_batch_annotation'].value_counts()[self.adata.obs['_batch_annotation'].value_counts() > 5].index
+        )].copy()
+        difference_batches = set(self.adata.obs['_batch_annotation']) - batch_before_filtering
+        if difference_batches:
+            logging.warning(
+                f"The following batches will be excluded from annotation because they have less than 5 cells:{difference_batches}."
+            )
 
         if self.pretrained_scvi_path is not None:
             pretrained_data = scvi.model.SCVI.load(self.pretrained_scvi_path).adata
@@ -222,16 +244,10 @@ class Process_Query:
             self.labels_key["reference"]
         ].astype("category")
 
-        self.adata.obs[self.labels_key["reference"]] = (
-            self.adata.obs[self.labels_key["reference"]]
-            .cat.add_categories("unknown")
-            .fillna("unknown")
-        )
-
         # Remove any cell with expression below 10 counts.
         zero_cell_names = self.adata[self.adata.X.sum(1) < 10].obs_names
         self.adata.uns["Filtered_cells"] = list(zero_cell_names)
-        sc.pp.filter_cells(self.adata, min_counts=10, inplace=True)
+        sc.pp.filter_cells(self.adata, min_counts=30, inplace=True)
         if len(zero_cell_names) > 0:
             logging.warning(
                 f"The following cells will be excluded from annotation because they have low expression:{zero_cell_names}, likely due to highly variable gene selection. We recommend you subset the data yourself and set hvg to False."
@@ -241,15 +257,26 @@ class Process_Query:
 
         if self.hvg is not None and self.adata.n_vars>self.hvg:
             sc.pp.filter_genes(self.adata, min_counts=20, inplace=True)
-            self.adata.var['highly_variable'] = sc.pp.highly_variable_genes(
-                self.adata[self.adata.obs["_dataset"] =="ref"],
-                n_top_genes=self.hvg,
-                subset=False,
-                layer="scvi_counts",
-                flavor='seurat_v3',
-                inplace=False,
-                batch_key="_batch_annotation",
-            )['highly_variable']
+            try:
+                self.adata.var['highly_variable'] = sc.pp.highly_variable_genes(
+                    self.adata[self.adata.obs["_dataset"] =="ref"].copy(),
+                    n_top_genes=self.hvg,
+                    subset=False,
+                    layer="scvi_counts",
+                    flavor='seurat_v3',
+                    inplace=False,
+                    batch_key="_batch_annotation",
+                )['highly_variable']
+            except ValueError: # seurat_v3 tends to error with singularities then use Poisson hvg.
+                self.adata.var['highly_variable'] = sc.experimental.pp.highly_variable_genes(
+                    self.adata[self.adata.obs["_dataset"] =="ref"].copy(),
+                    n_top_genes=4000,
+                    subset=False,
+                    layer="scvi_counts",
+                    flavor='pearson_residuals',
+                    inplace=False,
+                    batch_key="_batch_annotation",
+                )['highly_variable']
             self.adata = self.adata[:, self.adata.var['highly_variable']].copy()
 
         sc.pp.normalize_total(self.adata)
@@ -263,7 +290,9 @@ class Process_Query:
         self.adata.uns["_pretrained_scvi_path"] = self.pretrained_scvi_path
         self.adata.uns["_pretrained_scanvi_path"] = self.pretrained_scanvi_path
         self.adata.uns["_pretrained_onclass_path"] = self.pretrained_onclass_path
+        self.adata.uns["_save_path_trained_models"] = self.save_path_trained_models
         self.adata.uns["_cl_obo_file"] = self.cl_obo_file
         self.adata.uns["_cl_ontology_file"] = self.cl_ontology_file
         self.adata.uns["_nlp_emb_file"] = self.nlp_emb_file
         self.adata.uns["_use_gpu"] = self.use_gpu
+        self.adata.uns["_compute_embedding"] = self.compute_embedding
