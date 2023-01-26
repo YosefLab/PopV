@@ -1,4 +1,6 @@
 import logging
+import pickle
+import numpy as np
 from ast import Pass
 from typing import Optional
 
@@ -10,7 +12,7 @@ class RF:
         self,
         batch_key: Optional[str] = "_batch_annotation",
         labels_key: Optional[str] = "_labels_annotation",
-        layers_key: Optional[str] = "logcounts",
+        layers_key: Optional[str] = None,
         result_key: Optional[str] = "popv_rf_prediction",
         classifier_dict: Optional[str] = {},
     ) -> None:
@@ -24,7 +26,7 @@ class RF:
         labels_key
             Key in obs field of adata for cell-type information.
         layers_key
-            Key in layers field of adata used for classification.
+            Key in layers field of adata used for classification. By default uses 'X' (log1p10K).
         result_key
             Key in obs in which celltype annotation results are stored.
         classifier_dict
@@ -52,19 +54,21 @@ class RF:
             )
         )
 
-        train_idx = adata.obs["_ref_subsample"]
-        test_idx = adata.obs["_dataset"] == "query"
+        test_x = adata.layers[self.layers_key] if self.layers_key else adata.X
 
-        train_x = adata[train_idx].layers[self.layers_key]
-        train_y = adata[train_idx].obs[self.labels_key].to_numpy()
-        test_x = adata[test_idx].layers[self.layers_key]
-
-        rf = RandomForestClassifier(**self.classifier_dict)
-        rf.fit(train_x, train_y)
-        rf_pred = rf.predict(test_x)
-
-        adata.obs[self.result_key] = adata.obs[self.labels_key]
-        adata.obs.loc[test_idx, self.result_key] = rf_pred
+        if adata.uns["_prediction_mode"]=='retrain':
+            train_idx = adata.obs["_ref_subsample"]
+            train_x = adata[train_idx].layers[self.layers_key] if self.layers_key else adata[train_idx].X
+            train_y = adata[train_idx].obs[self.labels_key].to_numpy()
+            rf = RandomForestClassifier(**self.classifier_dict)
+            rf.fit(train_x, train_y)
+            if adata.uns["_save_path_trained_models"]:
+                pickle.dump(rf, open(adata.uns["_save_path_trained_models"] + 'rf_classifier.pkl', 'wb'))
+        else:
+            rf = pickle.load(open(adata.uns["_save_path_trained_models"] + 'rf_classifier.pkl', 'rb'))
+        adata.obs[self.result_key] = rf.predict(test_x)
+        if adata.uns["_return_probabilities"]:
+            adata.obs[self.result_key + '_probabilities'] = np.max(rf.predict_proba(test_x), axis=1)
 
     def compute_embedding(self, adata):
         pass

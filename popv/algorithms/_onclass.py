@@ -35,7 +35,6 @@ class ONCLASS:
         result_key
             Key in obs in which celltype annotation results are stored.
         """
-
         self.batch_key = batch_key
         self.labels_key = labels_key
         self.result_key = result_key
@@ -109,7 +108,20 @@ class ONCLASS:
         adata.obs.loc[
             adata.obs["_dataset"] == "query", self.cell_ontology_obs_key
         ] = adata.uns["unknown_celltype_label"]
+        
 
+        train_idx = adata.obs["_dataset"] == "ref"
+
+        if self.layers_key is None:
+            train_X = adata[train_idx].X.copy()
+            test_X = adata.X.copy()
+        else:
+            train_X = adata[train_idx].layers[self.layers_key].copy()
+            test_X = adata.layers[self.layers_key].copy()
+        if scipy.sparse.issparse(train_X):
+            train_X = train_X.todense()
+            test_X = test_X.todense()
+        
         cl_obo_file = adata.uns["_cl_obo_file"]
         cl_ontology_file = adata.uns["_cl_ontology_file"]
         nlp_emb_file = adata.uns["_nlp_emb_file"]
@@ -118,85 +130,70 @@ class ONCLASS:
             cl_obo_file
         )
         self.make_cell_ontology_id(adata, celltype_dict, self.cell_ontology_obs_key)
-
+        
         train_model = OnClassModel(
             cell_type_nlp_emb_file=nlp_emb_file, cell_type_network_file=cl_ontology_file
         )
 
-        train_idx = adata.obs["_dataset"] == "ref"
-        test_idx = adata.obs["_dataset"] == "query"
-
-        if self.layers_key is None:
-            train_X = adata[train_idx].layers['logcounts'].copy()
-            test_X = adata[test_idx].layers['logcounts'].copy()
-        else:
-            train_X = adata[train_idx].layers[self.layers_key].copy()
-            test_X = adata[test_idx].layers[self.layers_key].copy()
-        if scipy.sparse.issparse(train_X):
-            train_X = train_X.todense()
-            test_X = test_X.todense()
-        
-
-        train_Y = adata[train_idx].obs[self.cell_ontology_obs_key]
-
-        test_adata = adata[test_idx].copy()
-
-        _ = train_model.EmbedCellTypes(train_Y)
         if adata.uns['_save_path_trained_models'] is not None:
             model_path = adata.uns['_save_path_trained_models'] + "/OnClass"
         else:
-            model_path = "tmp_onclass/OnClass"
-        
-        (
-            corr_train_feature,
-            corr_test_feature,
-            corr_train_genes,
-            corr_test_genes,
-        ) = train_model.ProcessTrainFeature(
-            train_X,
-            train_Y,
-            adata.var_names,
-            test_feature=test_X,
-            test_genes=adata.var_names,
-            log_transform=False
-        )
+            model_path = None
 
-        if adata.uns['_pretrained_onclass_path'] is None:
+        if adata.uns['_prediction_mode']=='retrain':
+            train_Y = adata[train_idx].obs[self.cell_ontology_obs_key]
+            _ = train_model.EmbedCellTypes(train_Y)
+            
+            (
+                corr_train_feature,
+                corr_test_feature,
+                corr_train_genes,
+                _,
+            ) = train_model.ProcessTrainFeature(
+                train_X,
+                train_Y,
+                adata.var_names,
+                test_feature=test_X,
+                test_genes=adata.var_names,
+                log_transform=False
+            )
+            
             train_model.BuildModel(ngene=len(corr_train_genes))
             train_model.Train(
                 corr_train_feature, train_Y, save_model=model_path, max_iter=self.max_iter
             )
         else:
-            model_path = adata.uns['_pretrained_onclass_path']
-            train_model.BuildModel(ngene=len(corr_train_genes), use_pretrain=model_path)
+            train_model.BuildModel(ngene=None, use_pretrain=model_path)
 
-        test_adata.obs[self.result_key] = None
+        adata.obs[self.result_key] = None
 
         corr_test_feature = train_model.ProcessTestFeature(
-            corr_test_feature,
-            corr_test_genes,
+            test_feature=test_X,
+            test_genes=adata.var_names,
             use_pretrain=model_path,
             log_transform=False,
         )
 
-        if test_adata.n_obs > self.shard_size:
-            for i in range(0, test_adata.n_obs, self.shard_size):
-                tmp_X = corr_test_feature[i : i + self.shard_size]
-                onclass_pred = train_model.Predict(tmp_X, use_normalize=False)
-                pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
-                pred_label_str = [clid_2_name[ind] for ind in pred_label]
-                test_adata.obs.loc[
-                    test_adata.obs.index[i : i + self.shard_size], self.result_key] = pred_label_str
+        if adata.uns["_prediction_mode"]=='fast':
+            onclass_seen = np.argmax(train_model.model.predict(corr_test_feature), axis=1)
+            pred_label = [train_model.i2co[ind] for ind in onclass_seen]
+            pred_label_str = [clid_2_name[ind] for ind in pred_label]
+            adata.obs[self.result_key] = pred_label_str
+            adata.obs["onclass_seen"] = pred_label_str
         else:
-            onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False)
+            onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False, refine = True, unseen_ratio = 0.1)
             pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
-            test_adata.obs[self.result_key] = pred_label_str
+            adata.obs[self.result_key] = pred_label_str
+            
+            onclass_seen = np.argmax(onclass_pred[0], axis=1)
+            pred_label = [train_model.i2co[ind] for ind in onclass_seen]
+            pred_label_str = [clid_2_name[ind] for ind in pred_label]
+            adata.obs["onclass_seen"] = pred_label_str
 
-        adata.obs[self.result_key] = adata.obs[self.labels_key].astype(str)
-        adata.obs.loc[test_adata.obs_names, self.result_key] = test_adata.obs[
-            self.result_key
-        ]
+            if adata.uns["_return_probabilities"]:
+                adata.obs[self.result_key + '_probabilities'] = np.max(onclass_pred[1], axis=1)
+                adata.obs["onclass_seen" + '_probabilities'] = np.max(onclass_pred[0], axis=1)
 
     def compute_embedding(self, adata):
-        pass
+        return None

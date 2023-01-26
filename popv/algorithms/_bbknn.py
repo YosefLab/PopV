@@ -67,16 +67,16 @@ class BBKNN:
         distances = adata.obsp["distances"]
 
         ref_idx = adata.obs["_dataset"] == "ref"
-        query_idx = adata.obs["_dataset"] == "query"
-
+        
         ref_dist_idx = np.where(ref_idx)[0]
-        query_dist_idx = np.where(query_idx)[0]
 
         train_y = adata.obs.loc[ref_idx, self.labels_key].to_numpy()
+        
         train_distances = distances[ref_dist_idx, :][:, ref_dist_idx]
+        test_distances = distances[:, :][:, ref_dist_idx]
         
         # Make sure BBKNN found the required number of neighbors, otherwise reduce n_neighbors for KNN.
-        smallest_neighbor_graph = np.diff(distances.indptr).min()
+        smallest_neighbor_graph = np.min([np.diff(test_distances.indptr).min(), np.diff(train_distances.indptr).min()])
         if smallest_neighbor_graph < 15:
             logging.warning(f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN.")
             self.classifier_dict["n_neighbors"] = smallest_neighbor_graph
@@ -84,18 +84,16 @@ class BBKNN:
         knn = KNeighborsClassifier(metric="precomputed", **self.classifier_dict)
         knn.fit(train_distances, y=train_y)
 
-        test_distances = distances[query_dist_idx, :][:, ref_dist_idx]
-        knn_pred = knn.predict(test_distances)
-
-        # save_results. ref cells get ref annotations, query cells get predicted
-        adata.obs[self.result_key] = adata.obs[self.labels_key]
-        adata.obs.loc[query_idx, self.result_key] = knn_pred
+        adata.obs[self.result_key] = knn.predict(test_distances)
+        
+        if adata.uns["_return_probabilities"]:
+            adata.obs[self.result_key + '_probabilities'] = np.max(knn.predict_proba(test_distances), axis=1)
 
     def compute_embedding(self, adata):
-        logging.info(
-            f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]'
-        )
         if adata.uns['_compute_embedding']:
+            logging.info(
+                f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]'
+            )
             adata.obsm[self.embedding_key] = sc.tl.umap(
                 adata, copy=True, **self.embedding_dict
             ).obsm["X_umap"]

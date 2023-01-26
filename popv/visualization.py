@@ -11,7 +11,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
-from . import _alluvial
+from .reproducibility import _alluvial
 
 
 def _sample_report(adata, cell_type_key, score_key, pred_keys):
