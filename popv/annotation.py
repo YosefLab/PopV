@@ -143,15 +143,16 @@ def ontology_vote_onclass(
     cell_type_root_to_node = {}
     depth_cell_type = {}
     aggregate_ontology_pred = [None] * adata.n_obs
+    depth = {"cell": 0}
     scores = [None] * adata.n_obs
     depths = [None] * adata.n_obs
     onclass_depth = [None] * adata.n_obs
     
-    for cell in adata.obs.index:
-        score = depth = defaultdict(lambda: 0)
+    for ind, cell in enumerate(adata.obs.index):
+        score = defaultdict(lambda: 0)
         score["cell"] = 0
         depth["cell"] = 0
-        for ind, pred_key in enumerate(prediction_keys):
+        for pred_key in prediction_keys:
             cell_type = adata.obs[pred_key][cell]
             if not pd.isna(cell_type):
                 cell_type = cell_type.lower()
@@ -186,7 +187,8 @@ def ontology_vote_onclass(
     adata.obs[save_key] = aggregate_ontology_pred
     adata.obs[save_key + "_score"] = scores
     adata.obs[save_key + "_depth"] = depths
-    adata.obs[save_key + "_onclass_relative_depth"] = onclass_depth
+    adata.obs[save_key + "_onclass_relative_depth"] = (
+        np.array(onclass_depth) - adata.obs[save_key + "_depth"])
     return adata
 
 def ontology_parent_onclass(
