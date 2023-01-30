@@ -1,4 +1,4 @@
-import _utils
+from popv import _utils
 import networkx as nx
 
 
@@ -12,7 +12,7 @@ def _absolute_accuracy(adata, pred_key, gt_key, save_key=None):
     return acc
 
 def _ontology_accuracy(adata, pred_key, gt_key, obofile, save_key=None):
-    G = _utils.make_ontology_dag(obofile).reverse()
+    G = _utils.make_ontology_dag(obofile, lowercase=True).reverse()
     if not save_key:
         save_key = "ontology_accuracy"
     adata.obs[save_key] = "na"
@@ -34,7 +34,7 @@ def _ontology_accuracy(adata, pred_key, gt_key, obofile, save_key=None):
     )
     return adata.obs[save_key]
 
-def fine_ontology_sibling_accuracy(adata, dag, pred_key, gt_key, save_key=None):
+def _fine_ontology_sibling_accuracy(adata, obofile, pred_key, gt_key, save_key=None):
     
     """
     Calculates the fine ontology accuracy and also determines the distance to siblings
@@ -42,6 +42,8 @@ def fine_ontology_sibling_accuracy(adata, dag, pred_key, gt_key, save_key=None):
     if save_key is None:
         save_key = pred_key + '_ontology_distance'
     adata.obs[save_key] = None
+    
+    dag = _utils.make_ontology_dag(obofile, lowercase=True).reverse()
     
     ontology_distance_dict = {}
     

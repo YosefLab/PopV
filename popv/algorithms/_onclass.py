@@ -65,7 +65,7 @@ class ONCLASS:
         with open(cl_obo_file) as f:
             co = obonet.read_obo(f)
             id2name = {id_: data.get("name") for id_, data in co.nodes(data=True)}
-            id2name = {k: v.lower() for k, v in id2name.items() if v is not None}
+            id2name = {k: v for k, v in id2name.items() if v is not None}
             name2id = {v: k for k, v in id2name.items()}
 
         return name2id, id2name

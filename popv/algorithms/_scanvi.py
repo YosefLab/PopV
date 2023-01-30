@@ -61,7 +61,7 @@ class SCANVI_POPV:
         self.save_folder = save_folder
         
         self.model_kwargs = {
-            "dropout_rate": 0.1,
+            "dropout_rate": 0.05,
             "dispersion": "gene",
             "n_layers": 3,
             "n_latent": 20,

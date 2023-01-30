@@ -128,7 +128,7 @@ def calculate_depths(g):
     return depths
 
 
-def make_ontology_dag(obofile, lowercase=True):
+def make_ontology_dag(obofile, lowercase=False):
     """
     Construct a graph with all cell-types.
 

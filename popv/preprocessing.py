@@ -28,7 +28,7 @@ class Process_Query:
         unknown_celltype_label: Optional[str] = "unknown",
         n_samples_per_label: Optional[int] = 300,
         pretrained_scvi_path: Optional[str] = None,
-        save_path_trained_models: Optional[str] = "pretrained_models",
+        save_path_trained_models: Optional[str] = 'tmp/',
         hvg: Optional[int] = 4000,
         use_gpu: Optional[bool] = False,
         compute_embedding: Optional[bool] = True,

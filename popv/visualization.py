@@ -110,13 +110,15 @@ def agreement_score_bar_plot(
     Returns axis of corresponding plot.
 
     """
-    celltypes = adata[adata.obs["_dataset"] == "query"].obs[popv_prediction_key].unique()
+    ct = adata[adata.obs["_dataset"] == "query"].obs[popv_prediction_key]
+    
+    celltypes = ct.unique()
     mean_agreement = [
         np.mean(
             adata[
                 np.logical_and(
                     adata.obs["_dataset"] == "query",
-                    adata.obs[popv_prediction_key] == x,
+                    ct == x,
                 )
             ]
             .obs[consensus_score_key]

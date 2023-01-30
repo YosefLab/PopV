@@ -114,6 +114,7 @@ def ontology_vote_onclass(
     adata: anndata.AnnData,
     prediction_keys: list,
     save_key: Optional[str] = "popv_prediction",
+    output_depth: Optional[bool] = False,
 ):
     """
     Compute prediction using ontology aggregation method.
@@ -126,6 +127,8 @@ def ontology_vote_onclass(
         Keys in adata.obs containing predicted cell_types.
     save_key
         Name of the field in adata.obs to store the consensus prediction.
+    output_depth
+        Output also reports depth in the ontology of consensus prediction.
 
     Returns
     ----------
@@ -147,37 +150,40 @@ def ontology_vote_onclass(
     scores = [None] * adata.n_obs
     depths = [None] * adata.n_obs
     onclass_depth = [None] * adata.n_obs
+    depth["cell"] = 0
     
     for ind, cell in enumerate(adata.obs.index):
         score = defaultdict(lambda: 0)
         score["cell"] = 0
-        depth["cell"] = 0
         for pred_key in prediction_keys:
             cell_type = adata.obs[pred_key][cell]
             if not pd.isna(cell_type):
-                cell_type = cell_type.lower()
                 if cell_type in cell_type_root_to_node:
                     root_to_node = cell_type_root_to_node[cell_type]
                 else:
                     root_to_node = nx.descendants(G, cell_type)
                     cell_type_root_to_node[cell_type] = root_to_node
                     depth_cell_type[cell_type] = len(nx.shortest_path(G, cell_type, "cell"))
+                    depth[cell_type] = depth_cell_type[cell_type]
+                    for ancestor_cell_type in root_to_node:
+                        depth[ancestor_cell_type] = len(
+                            nx.shortest_path(G, ancestor_cell_type, "cell")
+                        )
                 if pred_key == "popv_onclass_prediction":
                     onclass_depth[ind] = depth_cell_type[cell_type]
                     for ancestor_cell_type in root_to_node:
                         score[ancestor_cell_type] += 1
-                        depth[ancestor_cell_type] = len(
-                            nx.shortest_path(G, ancestor_cell_type, "cell")
-                        )
-                depth[cell_type] = depth_cell_type[cell_type]
                 score[cell_type] += 1
+        # Find cell-type most present across all classifiers.
+        # If tie then deepest in network.
+        # If tie then last in alphabet, just to make it consistent across multiple cells.
         celltype_consensus = (
             max(
                 score,
                 key=lambda k: (
                     score[k],
                     depth[k],
-                    26 - string.ascii_lowercase.index(cell_type[0]),
+                    26 - string.ascii_lowercase.index(cell_type[0].lower()),
                 ),
             )
         )
@@ -185,16 +191,18 @@ def ontology_vote_onclass(
         scores[ind] = score[celltype_consensus]
         depths[ind] = depth[celltype_consensus]
     adata.obs[save_key] = aggregate_ontology_pred
-    adata.obs[save_key + "_score"] = scores
-    adata.obs[save_key + "_depth"] = depths
-    adata.obs[save_key + "_onclass_relative_depth"] = (
-        np.array(onclass_depth) - adata.obs[save_key + "_depth"])
+    adata.obs[save_key + "_score"] = scores 
+    if output_depth:
+        adata.obs[save_key + "_depth"] = depths
+        adata.obs[save_key + "_onclass_relative_depth"] = (
+            np.array(onclass_depth) - adata.obs[save_key + "_depth"])
     return adata
 
 def ontology_parent_onclass(
     adata: anndata.AnnData,
     prediction_keys: list,
-    save_key: Optional[str] = "popv_parent",
+    save_key: str = "popv_parent",
+    allowed_errors: int = 2
 ):
     """
     Compute common parent consensus prediction using ontology accumulation.
@@ -206,7 +214,9 @@ def ontology_parent_onclass(
     prediction_keys
         Keys in adata.obs containing predicted cell_types.
     save_key
-        Name of the field in adata.obs to store the consensus prediction.
+        Name of the field in adata.obs to store the consensus prediction. Default to 'popv_parent'.
+    allowed_errors
+        How many misclassifications are allowed to find common ontology ancestor. Defaults to 2.
 
     Returns
     ----------
@@ -224,41 +234,44 @@ def ontology_parent_onclass(
     cell_type_root_to_node = {}
     aggregate_ontology_pred = []
     depth = {"cell": 0}
-    scores = [None] * adata.n_obs
-    depths = [None] * adata.n_obs
     for ind, cell in enumerate(adata.obs.index):
         score = defaultdict(lambda: 0)
+        score_popv = defaultdict(lambda: 0)
         score["cell"] = 0
         for pred_key in prediction_keys:
             cell_type = adata.obs[pred_key][cell]
             if not pd.isna(cell_type):
-                cell_type = cell_type.lower()
                 if cell_type in cell_type_root_to_node:
                     root_to_node = cell_type_root_to_node[cell_type]
                 else:
                     root_to_node = nx.descendants(G, cell_type)
                     cell_type_root_to_node[cell_type] = root_to_node
-                for ancestor_cell_type in root_to_node:
+                    depth[cell_type] = len(
+                            nx.shortest_path(G, cell_type, "cell")
+                        )
+                    for ancestor_cell_type in root_to_node:
+                        depth[ancestor_cell_type] = len(
+                            nx.shortest_path(G, ancestor_cell_type, "cell")
+                        )
+                for ancestor_cell_type in root_to_node + [cell_type]:
                     score[ancestor_cell_type] += 1
-                    depth[ancestor_cell_type] = len(
-                        nx.shortest_path(G, ancestor_cell_type, "cell")
-                    )
-                depth[cell_type] = len(nx.shortest_path(G, cell_type, "cell"))
-                score[cell_type] += 1
+                score_popv[cell_type] += 1
+        score = {key: min(len(prediction_keys) - allowed_errors, value) for key, value in score.items()}
+        
+        # Find ancestor most present and deepest across all classifiers.
+        # If tie, then highest in original classifier.
+        # If tie then last in alphabet, just to make it consistent across multiple cells.
         celltype_consensus = (
             max(
                 score,
                 key=lambda k: (
                     score[k],
                     depth[k],
-                    26 - string.ascii_lowercase.index(cell_type[0]),
+                    score_popv[k],
+                    26 - string.ascii_lowercase.index(cell_type[0].lower()),
                 ),
             )
         )
         aggregate_ontology_pred.append(celltype_consensus)
-        scores[ind] = score[celltype_consensus]
-        depths[ind] = depth[celltype_consensus]
     adata.obs[save_key] = aggregate_ontology_pred
-    adata.obs[save_key + "_score"] = scores
-    adata.obs[save_key + "_depth"] = depths
     return adata
