@@ -144,7 +144,6 @@ def ontology_vote_onclass(
         G = pickle.load(open(adata.uns["_save_path_trained_models"] + 'obo_dag.pkl', 'rb'))
     
     cell_type_root_to_node = {}
-    depth_cell_type = {}
     aggregate_ontology_pred = [None] * adata.n_obs
     depth = {"cell": 0}
     scores = [None] * adata.n_obs
@@ -163,14 +162,13 @@ def ontology_vote_onclass(
                 else:
                     root_to_node = nx.descendants(G, cell_type)
                     cell_type_root_to_node[cell_type] = root_to_node
-                    depth_cell_type[cell_type] = len(nx.shortest_path(G, cell_type, "cell"))
-                    depth[cell_type] = depth_cell_type[cell_type]
+                    depth[cell_type] = len(nx.shortest_path(G, cell_type, "cell"))
                     for ancestor_cell_type in root_to_node:
                         depth[ancestor_cell_type] = len(
                             nx.shortest_path(G, ancestor_cell_type, "cell")
                         )
                 if pred_key == "popv_onclass_prediction":
-                    onclass_depth[ind] = depth_cell_type[cell_type]
+                    onclass_depth[ind] = depth[cell_type]
                     for ancestor_cell_type in root_to_node:
                         score[ancestor_cell_type] += 1
                 score[cell_type] += 1
@@ -253,7 +251,7 @@ def ontology_parent_onclass(
                         depth[ancestor_cell_type] = len(
                             nx.shortest_path(G, ancestor_cell_type, "cell")
                         )
-                for ancestor_cell_type in root_to_node + [cell_type]:
+                for ancestor_cell_type in list(root_to_node) + [cell_type]:
                     score[ancestor_cell_type] += 1
                 score_popv[cell_type] += 1
         score = {key: min(len(prediction_keys) - allowed_errors, value) for key, value in score.items()}

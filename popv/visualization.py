@@ -110,7 +110,7 @@ def agreement_score_bar_plot(
     Returns axis of corresponding plot.
 
     """
-    ct = adata[adata.obs["_dataset"] == "query"].obs[popv_prediction_key]
+    ct = adata.obs[popv_prediction_key]
     
     celltypes = ct.unique()
     mean_agreement = [
@@ -129,7 +129,7 @@ def agreement_score_bar_plot(
     mean_agreement = pd.DataFrame(
         [mean_agreement], index=["agreement"], columns=celltypes
     ).T
-
+    mean_agreement.dropna(inplace=True)
     mean_agreement = mean_agreement.sort_values("agreement", ascending=True)
     ax = mean_agreement.plot.bar(y="agreement", figsize=(15, 2), legend=False)
     plt.ylabel("Mean Agreement")

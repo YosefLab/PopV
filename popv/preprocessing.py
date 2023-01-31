@@ -6,6 +6,7 @@ import anndata
 import numpy as np
 import scanpy as sc
 import torch
+import subprocess
 from scanpy._utils import check_nonnegative_integers
 
 from popv import _utils
@@ -156,6 +157,11 @@ class Process_Query:
             self.cl_obo_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.obo"
             self.cl_ontology_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology"
             self.nlp_emb_file = os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.ontology.nlp.emb"
+            if not os.path.exists(self.nlp_emb_file):
+                subprocess.call([
+                    'tar', '-czf',
+                    os.path.dirname(os.path.dirname(__file__)) + "/ontology/nlp.emb.tar.gz",
+                    'cl.ontology.nlp.emb'])
         else:
             self.cl_obo_file = cl_obo_file
             self.cl_ontology_file = cl_ontology_file
