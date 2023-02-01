@@ -8,6 +8,7 @@ tmp_testing/
 __pycache__/
 *.py[cod]
 *$py.class
+*.nlp.emb
 
 # C extensions
 *.so
@@ -150,5 +151,3 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
-popv/annotation.py
-ontology/cl.ontology.nlp.emb

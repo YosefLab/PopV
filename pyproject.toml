@@ -12,8 +12,8 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
   "Natural Language :: English",
-  "Programming Language :: Python :: 3.7",
   "Programming Language :: Python :: 3.8"
+  "Programming Language :: Python :: 3.9"
 ]
 
 description = "Automatic annotation of single cell data using a labelled reference dataset including various methods and giving certainty across those methods."
