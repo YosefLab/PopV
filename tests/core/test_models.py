@@ -35,16 +35,17 @@ def _get_test_anndata():
     adata = Process_Query(
         query_adata,
         ref_adata,
-        save_folder=save_folder,
         query_batch_key=query_batch_key,
         query_labels_key=query_labels_key,
-        unknown_celltype_label=unknown_celltype_label,
         ref_labels_key=ref_labels_key,
         ref_batch_key=ref_batch_key,
-        pretrained_scvi_path=None,
-        pretrained_scanvi_path=None,
+        unknown_celltype_label=unknown_celltype_label,
+        save_path_trained_models=save_folder,
+        prediction_mode='retrain',
         n_samples_per_label=n_samples_per_label,
-        hvg=None,
+        compute_embedding=True,
+        compute_probabilities=True,
+        hvg=4000,
     )
 
     return adata
