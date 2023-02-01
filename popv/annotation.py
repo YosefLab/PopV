@@ -190,6 +190,7 @@ def ontology_vote_onclass(
         depths[ind] = depth[celltype_consensus]
     adata.obs[save_key] = aggregate_ontology_pred
     adata.obs[save_key + "_score"] = scores 
+    adata.obs[save_key + "_score"] = adata.obs[save_key + "_score"].astype('category')
     if output_depth:
         adata.obs[save_key + "_depth"] = depths
         adata.obs[save_key + "_onclass_relative_depth"] = (

@@ -283,7 +283,7 @@ def _prediction_eval(
     plt.tight_layout()
     plt.title(name)
     if res_dir is not None:
-        output_pdf_fn = os.path.join(res_dir, "confusion_matrices.pdf")
+        output_pdf_fn = os.path.join(res_dir, f"confusion_matrices_{name}.pdf")
         pdf = matplotlib.backends.backend_pdf.PdfPages(output_pdf_fn)
         for fig in range(1, plt.gcf().number + 1):
             pdf.savefig(fig)

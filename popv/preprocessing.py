@@ -100,12 +100,12 @@ class Process_Query:
         else:  
             self.pretrained_scvi_path = pretrained_scvi_path
             
-        self.save_path_trained_models = save_path_trained_models
         if save_path_trained_models is not None:
             if save_path_trained_models[-1]!='/':
                 save_path_trained_models += '/'
-            if not os.path.exists(self.save_path_trained_models):
-                os.makedirs(self.save_path_trained_models)
+            if not os.path.exists(save_path_trained_models):
+                os.makedirs(save_path_trained_models)
+        self.save_path_trained_models = save_path_trained_models
 
         self.prediction_mode = prediction_mode
         self.return_probabilities = return_probabilities

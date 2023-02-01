@@ -89,7 +89,7 @@ class ONCLASS:
         for label in adata.obs[self.labels_key]:
             if label != adata.uns["unknown_celltype_label"]:
                 if label not in celltype_dict:
-                    print("Following label not in celltype_dict ", label)
+                    logging.warning("Following label not in celltype_dict ", label)
                 ontology_id.append(celltype_dict[label])
             else:
                 ontology_id.append("unknown")

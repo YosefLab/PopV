@@ -64,7 +64,6 @@ def _fine_ontology_sibling_accuracy(adata, obofile, pred_key, gt_key, save_key=N
             else:
                 paths = nx.algorithms.simple_paths.shortest_simple_paths(
                     nx.Graph(dag), source=pred_ct, target=gt_ct)
-                print(paths)
                 if len(paths)==0:
                     score = 1000
                 else:
