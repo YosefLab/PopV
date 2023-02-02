@@ -41,10 +41,10 @@ def _get_test_anndata():
         ref_batch_key=ref_batch_key,
         unknown_celltype_label=unknown_celltype_label,
         save_path_trained_models=save_folder,
-        prediction_mode='retrain',
+        prediction_mode="retrain",
         n_samples_per_label=n_samples_per_label,
         compute_embedding=True,
-        compute_probabilities=True,
+        return_probabilities=True,
         hvg=4000,
     )
 

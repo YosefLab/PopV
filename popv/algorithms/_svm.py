@@ -1,9 +1,9 @@
 import logging
 import pickle
-import numpy as np
 from ast import Pass
 from typing import Optional
 
+import numpy as np
 from sklearn import svm
 from sklearn.calibration import CalibratedClassifierCV
 
@@ -56,23 +56,39 @@ class SVM:
             )
         )
         test_x = adata.layers[self.layers_key] if self.layers_key else adata.X
-        
-        if adata.uns["_prediction_mode"]=='retrain':
+
+        if adata.uns["_prediction_mode"] == "retrain":
             train_idx = adata.obs["_ref_subsample"]
-            train_x = adata[train_idx].layers[self.layers_key] if self.layers_key else adata[train_idx].X
+            train_x = (
+                adata[train_idx].layers[self.layers_key]
+                if self.layers_key
+                else adata[train_idx].X
+            )
             train_y = adata[train_idx].obs[self.labels_key].to_numpy()
             clf = CalibratedClassifierCV(svm.LinearSVC(**self.classifier_dict))
             clf.fit(train_x, train_y)
             if adata.uns["_save_path_trained_models"]:
-                pickle.dump(clf, open(adata.uns["_save_path_trained_models"] + 'svm_classifier.pkl', 'wb'))
+                pickle.dump(
+                    clf,
+                    open(
+                        adata.uns["_save_path_trained_models"] + "svm_classifier.pkl",
+                        "wb",
+                    ),
+                )
         else:
-            clf = pickle.load(open(adata.uns["_save_path_trained_models"] + 'svm_classifier.pkl', 'rb'))
+            clf = pickle.load(
+                open(
+                    adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"
+                )
+            )
 
         adata.obs[self.result_key] = clf.predict(test_x)
 
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + '_probabilities'] = np.max(clf.predict_proba(test_x), axis=1)
-        
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                clf.predict_proba(test_x), axis=1
+            )
+
         adata.obs[self.result_key]
 
     def compute_embedding(self, adata):

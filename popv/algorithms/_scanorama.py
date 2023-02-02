@@ -78,12 +78,14 @@ class SCANORAMA:
 
         # save_results
         adata.obs[result_key] = knn_pred
-        
+
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + '_probabilities'] = np.max(knn.predict_proba(adata.obsm["X_scanorama"]), axis=1)
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                knn.predict_proba(adata.obsm["X_scanorama"]), axis=1
+            )
 
     def compute_embedding(self, adata, embedding_key="X_scanorama_umap_popv"):
-        if adata.uns['_compute_embedding']:
+        if adata.uns["_compute_embedding"]:
             logging.info(
                 f'Saving UMAP of scanorama results to adata.obs["{embedding_key}"]'
             )

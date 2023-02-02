@@ -79,7 +79,9 @@ def check_genes_is_subset(ref_genes, query_genes):
         logging.info("All ref genes are in query dataset. Can use pretrained models.")
         is_subset = True
     else:
-        logging.info("Not all reference genes are in query dataset. Set 'prediction_mode' to 'retrain'.")
+        logging.info(
+            "Not all reference genes are in query dataset. Set 'prediction_mode' to 'retrain'."
+        )
         is_subset = False
     return is_subset
 

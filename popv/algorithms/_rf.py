@@ -1,9 +1,9 @@
 import logging
 import pickle
-import numpy as np
 from ast import Pass
 from typing import Optional
 
+import numpy as np
 from sklearn.ensemble import RandomForestClassifier
 
 
@@ -56,19 +56,33 @@ class RF:
 
         test_x = adata.layers[self.layers_key] if self.layers_key else adata.X
 
-        if adata.uns["_prediction_mode"]=='retrain':
+        if adata.uns["_prediction_mode"] == "retrain":
             train_idx = adata.obs["_ref_subsample"]
-            train_x = adata[train_idx].layers[self.layers_key] if self.layers_key else adata[train_idx].X
+            train_x = (
+                adata[train_idx].layers[self.layers_key]
+                if self.layers_key
+                else adata[train_idx].X
+            )
             train_y = adata[train_idx].obs[self.labels_key].to_numpy()
             rf = RandomForestClassifier(**self.classifier_dict)
             rf.fit(train_x, train_y)
             if adata.uns["_save_path_trained_models"]:
-                pickle.dump(rf, open(adata.uns["_save_path_trained_models"] + 'rf_classifier.pkl', 'wb'))
+                pickle.dump(
+                    rf,
+                    open(
+                        adata.uns["_save_path_trained_models"] + "rf_classifier.pkl",
+                        "wb",
+                    ),
+                )
         else:
-            rf = pickle.load(open(adata.uns["_save_path_trained_models"] + 'rf_classifier.pkl', 'rb'))
+            rf = pickle.load(
+                open(adata.uns["_save_path_trained_models"] + "rf_classifier.pkl", "rb")
+            )
         adata.obs[self.result_key] = rf.predict(test_x)
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + '_probabilities'] = np.max(rf.predict_proba(test_x), axis=1)
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                rf.predict_proba(test_x), axis=1
+            )
 
     def compute_embedding(self, adata):
         pass

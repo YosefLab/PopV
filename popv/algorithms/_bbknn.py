@@ -43,7 +43,11 @@ class BBKNN:
         self.result_key = result_key
         self.embedding_key = embedding_key
 
-        self.method_dict = {"metric": "angular", "n_pcs": 50, "neighbors_within_batch": 8}
+        self.method_dict = {
+            "metric": "angular",
+            "n_pcs": 50,
+            "neighbors_within_batch": 8,
+        }
         self.method_dict.update(method_dict)
 
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
@@ -54,12 +58,8 @@ class BBKNN:
 
     def compute_integration(self, adata):
         logging.info("Integrating data with bbknn")
-        
-        sc.external.pp.bbknn(
-            adata,
-            batch_key=self.batch_key,
-            **self.method_dict
-        )
+
+        sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_dict)
 
     def predict(self, adata):
         logging.info(f'Saving knn on bbknn results to adata.obs["{self.result_key}"]')
@@ -67,30 +67,39 @@ class BBKNN:
         distances = adata.obsp["distances"]
 
         ref_idx = adata.obs["_dataset"] == "ref"
-        
+
         ref_dist_idx = np.where(ref_idx)[0]
 
         train_y = adata.obs.loc[ref_idx, self.labels_key].to_numpy()
-        
+
         train_distances = distances[ref_dist_idx, :][:, ref_dist_idx]
         test_distances = distances[:, :][:, ref_dist_idx]
-        
+
         # Make sure BBKNN found the required number of neighbors, otherwise reduce n_neighbors for KNN.
-        smallest_neighbor_graph = np.min([np.diff(test_distances.indptr).min(), np.diff(train_distances.indptr).min()])
+        smallest_neighbor_graph = np.min(
+            [
+                np.diff(test_distances.indptr).min(),
+                np.diff(train_distances.indptr).min(),
+            ]
+        )
         if smallest_neighbor_graph < 15:
-            logging.warning(f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN.")
+            logging.warning(
+                f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN."
+            )
             self.classifier_dict["n_neighbors"] = smallest_neighbor_graph
 
         knn = KNeighborsClassifier(metric="precomputed", **self.classifier_dict)
         knn.fit(train_distances, y=train_y)
 
         adata.obs[self.result_key] = knn.predict(test_distances)
-        
+
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + '_probabilities'] = np.max(knn.predict_proba(test_distances), axis=1)
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                knn.predict_proba(test_distances), axis=1
+            )
 
     def compute_embedding(self, adata):
-        if adata.uns['_compute_embedding']:
+        if adata.uns["_compute_embedding"]:
             logging.info(
                 f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]'
             )

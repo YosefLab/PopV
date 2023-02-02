@@ -111,7 +111,7 @@ def agreement_score_bar_plot(
 
     """
     ct = adata.obs[popv_prediction_key]
-    
+
     celltypes = ct.unique()
     mean_agreement = [
         np.mean(

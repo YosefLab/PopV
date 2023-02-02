@@ -72,7 +72,7 @@ class SCVI_POPV:
 
     def compute_integration(self, adata):
         logging.info("Integrating data with scvi")
-        
+
         # Go through obs field with subsampling information and subsample label information.
         if "subsampled_labels" not in adata.obs.columns:
             adata.obs["subsampled_labels"] = [
@@ -81,14 +81,16 @@ class SCVI_POPV:
                     adata.obs["_labels_annotation"], adata.obs["_ref_subsample"]
                 )
             ]
-        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype('category')
+        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype(
+            "category"
+        )
 
         if adata.uns["_pretrained_scvi_path"] is None:
             SCVI.setup_anndata(
                 adata,
                 batch_key=self.batch_key,
                 labels_key="subsampled_labels",
-                layer="scvi_counts"
+                layer="scvi_counts",
             )
             model = SCVI(adata, **self.model_kwargs)
             logging.info("Training scvi offline.")
@@ -97,14 +99,14 @@ class SCVI_POPV:
             model = SCVI.load_query_data(query, adata.uns["_pretrained_scvi_path"])
             logging.info("Training scvi online.")
 
-        if adata.uns["_prediction_mode"]=='fast':
+        if adata.uns["_prediction_mode"] == "fast":
             if self.max_epochs is None:
                 self.max_epochs = 1
             model.train(
                 max_epochs=self.max_epochs,
                 train_size=0.9,
                 use_gpu=adata.uns["_use_gpu"],
-                plan_kwargs={"n_steps_kl_warmup": 1}
+                plan_kwargs={"n_steps_kl_warmup": 1},
             )
         else:
             if self.max_epochs is None:
@@ -113,39 +115,62 @@ class SCVI_POPV:
                 max_epochs=round(self.max_epochs),
                 train_size=0.9,
                 use_gpu=adata.uns["_use_gpu"],
-                plan_kwargs={"n_epochs_kl_warmup": min(20, self.max_epochs)}
+                plan_kwargs={"n_epochs_kl_warmup": min(20, self.max_epochs)},
             )
 
-            if adata.uns['_save_path_trained_models'] is not None and adata.uns["_prediction_mode"]=='retrain':
+            if (
+                adata.uns["_save_path_trained_models"] is not None
+                and adata.uns["_prediction_mode"] == "retrain"
+            ):
                 # Update scvi for scanvi.
-                adata.uns["_pretrained_scvi_path"] = adata.uns['_save_path_trained_models'] + '/scvi'
-                model.save(adata.uns['_save_path_trained_models'] + '/scvi', save_anndata=False, overwrite=True)
+                adata.uns["_pretrained_scvi_path"] = (
+                    adata.uns["_save_path_trained_models"] + "/scvi"
+                )
+                model.save(
+                    adata.uns["_save_path_trained_models"] + "/scvi",
+                    save_anndata=False,
+                    overwrite=True,
+                )
 
         adata.obsm["X_scvi"] = model.get_latent_representation(adata)
 
     def predict(self, adata):
         logging.info(f'Saving knn on scvi results to adata.obs["{self.result_key}"]')
 
-        if adata.uns["_prediction_mode"]=='retrain':
+        if adata.uns["_prediction_mode"] == "retrain":
             ref_idx = adata.obs["_dataset"] == "ref"
             train_X = adata[ref_idx].obsm["X_scvi"]
             train_Y = adata[ref_idx].obs[self.labels_key].to_numpy()
             knn = KNeighborsClassifier(**self.classifier_dict)
             knn.fit(train_X, train_Y)
             if adata.uns["_save_path_trained_models"]:
-                pickle.dump(knn, open(adata.uns["_save_path_trained_models"] + 'scvi_knn_classifier.pkl', 'wb'))
+                pickle.dump(
+                    knn,
+                    open(
+                        adata.uns["_save_path_trained_models"]
+                        + "scvi_knn_classifier.pkl",
+                        "wb",
+                    ),
+                )
         else:
-            knn = pickle.load(open(adata.uns["_save_path_trained_models"] + 'scvi_knn_classifier.pkl', 'rb'))
-            
+            knn = pickle.load(
+                open(
+                    adata.uns["_save_path_trained_models"] + "scvi_knn_classifier.pkl",
+                    "rb",
+                )
+            )
+
         knn_pred = knn.predict(adata.obsm["X_scvi"])
 
         # save_results
         adata.obs[self.result_key] = knn_pred
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + '_probabilities'] = np.max(knn.predict_proba(adata.obsm["X_scvi"]), axis=1)
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                knn.predict_proba(adata.obsm["X_scvi"]), axis=1
+            )
 
     def compute_embedding(self, adata):
-        if adata.uns['_compute_embedding']:
+        if adata.uns["_compute_embedding"]:
             logging.info(
                 f'Saving UMAP of scvi results to adata.obs["{self.embedding_key}"]'
             )

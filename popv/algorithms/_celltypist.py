@@ -1,5 +1,6 @@
 import logging
 from typing import Optional
+
 import celltypist
 
 
@@ -41,7 +42,7 @@ class CELLTYPIST:
         self.method_dict = {"check_expression": False, "n_jobs": 10, "max_iter": 500}
         self.method_dict.update(method_dict)
 
-        self.classifier_dict = {"mode": 'best match', "majority_voting": True}
+        self.classifier_dict = {"mode": "best match", "majority_voting": True}
         self.classifier_dict.update(classifier_dict)
 
     def compute_integration(self, adata):
@@ -50,23 +51,31 @@ class CELLTYPIST:
     def predict(self, adata):
         logging.info(f'Saving celltypist results to adata.obs["{self.result_key}"]')
 
-        if adata.uns["_prediction_mode"]=='retrain':
+        if adata.uns["_prediction_mode"] == "retrain":
             train_idx = adata.obs["_ref_subsample"]
             train_adata = adata[train_idx].copy()
-            model = celltypist.train(
-                train_adata, self.labels_key, **self.method_dict)
-            
+            model = celltypist.train(train_adata, self.labels_key, **self.method_dict)
+
             if adata.uns["_save_path_trained_models"]:
-                model.write(adata.uns["_save_path_trained_models"] + 'celltypist.pkl')
-        if adata.uns["_prediction_mode"]=='fast':
-            self.classifier_dict['majority_voting'] = False
+                model.write(adata.uns["_save_path_trained_models"] + "celltypist.pkl")
+        if adata.uns["_prediction_mode"] == "fast":
+            self.classifier_dict["majority_voting"] = False
         predictions = celltypist.annotate(
-            adata, model=adata.uns["_save_path_trained_models"] + 'celltypist.pkl', **self.classifier_dict)
-        out_column = 'majority_voting' if 'majority_voting' in predictions.predicted_labels.columns else 'predicted_labels'
-        
+            adata,
+            model=adata.uns["_save_path_trained_models"] + "celltypist.pkl",
+            **self.classifier_dict,
+        )
+        out_column = (
+            "majority_voting"
+            if "majority_voting" in predictions.predicted_labels.columns
+            else "predicted_labels"
+        )
+
         adata.obs[self.result_key] = predictions.predicted_labels[out_column]
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + '_probabilities'] = predictions.probability_matrix.max(axis=1).values
+            adata.obs[
+                self.result_key + "_probabilities"
+            ] = predictions.probability_matrix.max(axis=1).values
 
     def compute_embedding(self, adata):
         pass

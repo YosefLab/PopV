@@ -1,9 +1,9 @@
 import logging
-import scipy
-import numpy as np
 from typing import Optional
 
+import numpy as np
 import obonet
+import scipy
 from OnClass.OnClassModel import OnClassModel
 
 
@@ -108,7 +108,6 @@ class ONCLASS:
         adata.obs.loc[
             adata.obs["_dataset"] == "query", self.cell_ontology_obs_key
         ] = adata.uns["unknown_celltype_label"]
-        
 
         train_idx = adata.obs["_dataset"] == "ref"
 
@@ -121,7 +120,7 @@ class ONCLASS:
         if scipy.sparse.issparse(train_X):
             train_X = train_X.todense()
             test_X = test_X.todense()
-        
+
         cl_obo_file = adata.uns["_cl_obo_file"]
         cl_ontology_file = adata.uns["_cl_ontology_file"]
         nlp_emb_file = adata.uns["_nlp_emb_file"]
@@ -130,20 +129,20 @@ class ONCLASS:
             cl_obo_file
         )
         self.make_cell_ontology_id(adata, celltype_dict, self.cell_ontology_obs_key)
-        
+
         train_model = OnClassModel(
             cell_type_nlp_emb_file=nlp_emb_file, cell_type_network_file=cl_ontology_file
         )
 
-        if adata.uns['_save_path_trained_models'] is not None:
-            model_path = adata.uns['_save_path_trained_models'] + "/OnClass"
+        if adata.uns["_save_path_trained_models"] is not None:
+            model_path = adata.uns["_save_path_trained_models"] + "/OnClass"
         else:
             model_path = None
 
-        if adata.uns['_prediction_mode']=='retrain':
+        if adata.uns["_prediction_mode"] == "retrain":
             train_Y = adata[train_idx].obs[self.cell_ontology_obs_key]
             _ = train_model.EmbedCellTypes(train_Y)
-            
+
             (
                 corr_train_feature,
                 corr_test_feature,
@@ -155,12 +154,15 @@ class ONCLASS:
                 adata.var_names,
                 test_feature=test_X,
                 test_genes=adata.var_names,
-                log_transform=False
+                log_transform=False,
             )
-            
+
             train_model.BuildModel(ngene=len(corr_train_genes))
             train_model.Train(
-                corr_train_feature, train_Y, save_model=model_path, max_iter=self.max_iter
+                corr_train_feature,
+                train_Y,
+                save_model=model_path,
+                max_iter=self.max_iter,
             )
         else:
             train_model.BuildModel(ngene=None, use_pretrain=model_path)
@@ -174,26 +176,34 @@ class ONCLASS:
             log_transform=False,
         )
 
-        if adata.uns["_prediction_mode"]=='fast':
-            onclass_seen = np.argmax(train_model.model.predict(corr_test_feature), axis=1)
+        if adata.uns["_prediction_mode"] == "fast":
+            onclass_seen = np.argmax(
+                train_model.model.predict(corr_test_feature), axis=1
+            )
             pred_label = [train_model.i2co[ind] for ind in onclass_seen]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
             adata.obs[self.result_key] = pred_label_str
             adata.obs["onclass_seen"] = pred_label_str
         else:
-            onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False, refine = True, unseen_ratio = 0.1)
+            onclass_pred = train_model.Predict(
+                corr_test_feature, use_normalize=False, refine=True, unseen_ratio=0.1
+            )
             pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
             adata.obs[self.result_key] = pred_label_str
-            
+
             onclass_seen = np.argmax(onclass_pred[0], axis=1)
             pred_label = [train_model.i2co[ind] for ind in onclass_seen]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
             adata.obs["onclass_seen"] = pred_label_str
 
             if adata.uns["_return_probabilities"]:
-                adata.obs[self.result_key + '_probabilities'] = np.max(onclass_pred[1], axis=1)
-                adata.obs["onclass_seen" + '_probabilities'] = np.max(onclass_pred[0], axis=1)
+                adata.obs[self.result_key + "_probabilities"] = np.max(
+                    onclass_pred[1], axis=1
+                )
+                adata.obs["onclass_seen" + "_probabilities"] = np.max(
+                    onclass_pred[0], axis=1
+                )
 
     def compute_embedding(self, adata):
         return None
