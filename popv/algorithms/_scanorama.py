@@ -51,7 +51,7 @@ class SCANORAMA:
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         self.classifier_dict.update(classifier_dict)
 
-        self.embedding_dict = {"min_dist": 0.01}
+        self.embedding_dict = {"min_dist": 0.1}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
@@ -69,26 +69,27 @@ class SCANORAMA:
         logging.info(f'Saving knn on scanorama results to adata.obs["{result_key}"]')
 
         ref_idx = adata.obs["_dataset"] == "ref"
-        query_idx = adata.obs["_dataset"] == "query"
-
         train_X = adata[ref_idx].obsm["X_scanorama"]
         train_Y = adata[ref_idx].obs[self.labels_key].to_numpy()
-        test_X = adata[query_idx].obsm["X_scanorama"]
 
         knn = KNeighborsClassifier(**self.classifier_dict)
         knn.fit(train_X, train_Y)
-        knn_pred = knn.predict(test_X)
+        knn_pred = knn.predict(adata.obsm["X_scanorama"])
 
         # save_results
-        adata.obs[result_key] = adata.obs[self.labels_key]
-        adata.obs.loc[query_idx, result_key] = knn_pred
+        adata.obs[result_key] = knn_pred
+
+        if adata.uns["_return_probabilities"]:
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                knn.predict_proba(adata.obsm["X_scanorama"]), axis=1
+            )
 
     def compute_embedding(self, adata, embedding_key="X_scanorama_umap_popv"):
-        logging.info(
-            f'Saving UMAP of scanorama results to adata.obs["{embedding_key}"]'
-        )
-
-        sc.pp.neighbors(adata, use_rep="X_scanorama")
-        adata.obsm[embedding_key] = sc.tl.umap(
-            adata, copy=True, **self.embedding_dict
-        ).obsm["X_umap"]
+        if adata.uns["_compute_embedding"]:
+            logging.info(
+                f'Saving UMAP of scanorama results to adata.obs["{embedding_key}"]'
+            )
+            sc.pp.neighbors(adata, use_rep="X_scanorama")
+            adata.obsm[embedding_key] = sc.tl.umap(
+                adata, copy=True, **self.embedding_dict
+            ).obsm["X_umap"]

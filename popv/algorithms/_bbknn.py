@@ -12,7 +12,7 @@ class BBKNN:
         batch_key: Optional[str] = "_batch_annotation",
         labels_key: Optional[str] = "_labels_annotation",
         result_key: Optional[str] = "popv_knn_on_bbknn_prediction",
-        embedding_key: Optional[str] = "X_umap_bbknn_popv",
+        embedding_key: Optional[str] = "X_bbknn_umap_popv",
         method_dict: Optional[dict] = {},
         classifier_dict: Optional[dict] = {},
         embedding_dict: Optional[dict] = {},
@@ -43,13 +43,17 @@ class BBKNN:
         self.result_key = result_key
         self.embedding_key = embedding_key
 
-        self.method_dict = {"metric": "angular", "n_pcs": 20}
+        self.method_dict = {
+            "metric": "angular",
+            "n_pcs": 50,
+            "neighbors_within_batch": 8,
+        }
         self.method_dict.update(method_dict)
 
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         self.classifier_dict.update(classifier_dict)
 
-        self.embedding_dict = {"min_dist": 0.01}
+        self.embedding_dict = {"min_dist": 0.5}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
@@ -63,29 +67,42 @@ class BBKNN:
         distances = adata.obsp["distances"]
 
         ref_idx = adata.obs["_dataset"] == "ref"
-        query_idx = adata.obs["_dataset"] == "query"
 
         ref_dist_idx = np.where(ref_idx)[0]
-        query_dist_idx = np.where(query_idx)[0]
 
         train_y = adata.obs.loc[ref_idx, self.labels_key].to_numpy()
+
         train_distances = distances[ref_dist_idx, :][:, ref_dist_idx]
+        test_distances = distances[:, :][:, ref_dist_idx]
+
+        # Make sure BBKNN found the required number of neighbors, otherwise reduce n_neighbors for KNN.
+        smallest_neighbor_graph = np.min(
+            [
+                np.diff(test_distances.indptr).min(),
+                np.diff(train_distances.indptr).min(),
+            ]
+        )
+        if smallest_neighbor_graph < 15:
+            logging.warning(
+                f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN."
+            )
+            self.classifier_dict["n_neighbors"] = smallest_neighbor_graph
 
         knn = KNeighborsClassifier(metric="precomputed", **self.classifier_dict)
         knn.fit(train_distances, y=train_y)
 
-        test_distances = distances[query_dist_idx, :][:, ref_dist_idx]
-        knn_pred = knn.predict(test_distances)
+        adata.obs[self.result_key] = knn.predict(test_distances)
 
-        # save_results. ref cells get ref annotations, query cells get predicted
-        adata.obs[self.result_key] = adata.obs[self.labels_key]
-        adata.obs.loc[query_idx, self.result_key] = knn_pred
+        if adata.uns["_return_probabilities"]:
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                knn.predict_proba(test_distances), axis=1
+            )
 
     def compute_embedding(self, adata):
-        logging.info(
-            f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]'
-        )
-
-        adata.obsm[self.embedding_key] = sc.tl.umap(
-            adata, copy=True, **self.embedding_dict
-        ).obsm["X_umap"]
+        if adata.uns["_compute_embedding"]:
+            logging.info(
+                f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]'
+            )
+            adata.obsm[self.embedding_key] = sc.tl.umap(
+                adata, copy=True, **self.embedding_dict
+            ).obsm["X_umap"]

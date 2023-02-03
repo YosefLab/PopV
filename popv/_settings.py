@@ -32,7 +32,7 @@ class Config:
 
     def __init__(
         self,
-        verbosity: int = logging.INFO,
+        verbosity: int = logging.WARNING,
         seed: int = 0,
         logging_dir: str = "./popv_log/",
     ):

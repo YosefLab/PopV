@@ -15,7 +15,7 @@ try:
     import importlib.metadata as importlib_metadata
 except ModuleNotFoundError:
     import importlib_metadata
-package_name = "scvi-tools"  # CAN update here.
+package_name = "popv"
 __version__ = importlib_metadata.version(package_name)
 
 Config.verbosity = logging.INFO

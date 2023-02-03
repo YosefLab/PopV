@@ -3,10 +3,12 @@ OnClass*
 popv_results/
 checkpoint
 popv_test_results/
+tmp_testing/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+*.nlp.emb
 
 # C extensions
 *.so
@@ -25,6 +27,7 @@ parts/
 sdist/
 var/
 wheels/
+tmp/
 share/python-wheels/
 *.egg-info/
 .installed.cfg

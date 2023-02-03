@@ -73,13 +73,15 @@ def check_genes_is_subset(ref_genes, query_genes):
 
     """
     if len(set(query_genes)) != len(query_genes):
-        print("Warning: Your genes are not unique.")
+        logging.warning("Genes in query_dataset are not unique.")
 
     if set(ref_genes).issubset(set(query_genes)):
-        print("All ref genes are in query dataset. Can use pretrained models.")
+        logging.info("All ref genes are in query dataset. Can use pretrained models.")
         is_subset = True
     else:
-        print("Not all reference genes are in query dataset. Retraining models.")
+        logging.info(
+            "Not all reference genes are in query dataset. Set 'prediction_mode' to 'retrain'."
+        )
         is_subset = False
     return is_subset
 
@@ -128,7 +130,7 @@ def calculate_depths(g):
     return depths
 
 
-def make_ontology_dag(obofile, lowercase=True):
+def make_ontology_dag(obofile, lowercase=False):
     """
     Construct a graph with all cell-types.
 
@@ -149,7 +151,7 @@ def make_ontology_dag(obofile, lowercase=True):
     }
 
     # get all node ids that are celltypes (start with CL)
-    cl_ids = {id_: True for name, id_ in name_to_id.items() if id_.startswith("CL:")}
+    cl_ids = {id_: True for _, id_ in name_to_id.items() if id_.startswith("CL:")}
 
     # make new empty graph
     g = nx.MultiDiGraph()

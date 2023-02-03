@@ -1,8 +1,11 @@
 import logging
+import pickle
 from ast import Pass
 from typing import Optional
 
+import numpy as np
 from sklearn import svm
+from sklearn.calibration import CalibratedClassifierCV
 
 
 class SVM:
@@ -10,9 +13,8 @@ class SVM:
         self,
         batch_key: Optional[str] = "_batch_annotation",
         labels_key: Optional[str] = "_labels_annotation",
-        layers_key: Optional[str] = "logcounts",
+        layers_key: Optional[str] = None,
         result_key: Optional[str] = "popv_svm_prediction",
-        embedding_key: Optional[str] = None,
         classifier_dict: Optional[str] = {},
     ) -> None:
         """
@@ -24,10 +26,10 @@ class SVM:
             Key in obs field of adata for batch information.
         labels_key
             Key in obs field of adata for cell-type information.
+        layers_key
+            Key in layers field of adata used for classification. By default uses 'X' (log1p10K).
         result_key
             Key in obs in which celltype annotation results are stored.
-        embedding_key
-            Here for consistency with other methods.
         classifier_dict
             Dictionary to supply non-default values for SVM classifier. Options at sklearn.svm.
         """
@@ -36,7 +38,6 @@ class SVM:
         self.labels_key = labels_key
         self.layers_key = layers_key
         self.result_key = result_key
-        self.embedding_key = embedding_key
 
         self.classifier_dict = {
             "C": 1,
@@ -54,22 +55,41 @@ class SVM:
                 self.result_key
             )
         )
+        test_x = adata.layers[self.layers_key] if self.layers_key else adata.X
 
-        train_idx = adata.obs["_ref_subsample"]
-        test_idx = adata.obs["_dataset"] == "query"
+        if adata.uns["_prediction_mode"] == "retrain":
+            train_idx = adata.obs["_ref_subsample"]
+            train_x = (
+                adata[train_idx].layers[self.layers_key]
+                if self.layers_key
+                else adata[train_idx].X
+            )
+            train_y = adata[train_idx].obs[self.labels_key].to_numpy()
+            clf = CalibratedClassifierCV(svm.LinearSVC(**self.classifier_dict))
+            clf.fit(train_x, train_y)
+            if adata.uns["_save_path_trained_models"]:
+                pickle.dump(
+                    clf,
+                    open(
+                        adata.uns["_save_path_trained_models"] + "svm_classifier.pkl",
+                        "wb",
+                    ),
+                )
+        else:
+            clf = pickle.load(
+                open(
+                    adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"
+                )
+            )
 
-        train_x = adata[train_idx].layers[self.layers_key]
-        train_y = adata[train_idx].obs[self.labels_key].to_numpy()
-        test_x = adata[test_idx].layers[self.layers_key]
+        adata.obs[self.result_key] = clf.predict(test_x)
 
-        clf = svm.LinearSVC(**self.classifier_dict)
-        clf.fit(train_x, train_y)
-        svm_pred = clf.predict(
-            test_x,
-        )
+        if adata.uns["_return_probabilities"]:
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                clf.predict_proba(test_x), axis=1
+            )
 
-        adata.obs[self.result_key] = adata.obs[self.labels_key]
-        adata.obs.loc[test_idx, self.result_key] = svm_pred
+        adata.obs[self.result_key]
 
     def compute_embedding(self, adata):
         pass

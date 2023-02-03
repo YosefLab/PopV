@@ -11,7 +11,7 @@ import pandas as pd
 import seaborn as sns
 from sklearn.metrics import confusion_matrix
 
-from . import _alluvial
+from .reproducibility import _alluvial
 
 
 def _sample_report(adata, cell_type_key, score_key, pred_keys):
@@ -110,13 +110,15 @@ def agreement_score_bar_plot(
     Returns axis of corresponding plot.
 
     """
-    celltypes = adata.obs[popv_prediction_key].unique()
+    ct = adata.obs[popv_prediction_key]
+
+    celltypes = ct.unique()
     mean_agreement = [
         np.mean(
             adata[
                 np.logical_and(
                     adata.obs["_dataset"] == "query",
-                    adata.obs[popv_prediction_key] == x,
+                    ct == x,
                 )
             ]
             .obs[consensus_score_key]
@@ -127,7 +129,7 @@ def agreement_score_bar_plot(
     mean_agreement = pd.DataFrame(
         [mean_agreement], index=["agreement"], columns=celltypes
     ).T
-
+    mean_agreement.dropna(inplace=True)
     mean_agreement = mean_agreement.sort_values("agreement", ascending=True)
     ax = mean_agreement.plot.bar(y="agreement", figsize=(15, 2), legend=False)
     plt.ylabel("Mean Agreement")
@@ -173,6 +175,47 @@ def prediction_score_bar_plot(
     ax.set_title("PopV Prediction Score")
     if save_folder is not None:
         save_path = os.path.join(save_folder, "prediction_score_barplot.pdf")
+        ax.get_figure().savefig(save_path, bbox_inches="tight", dpi=300)
+    return ax
+
+
+def celltype_ratio_bar_plot(
+    adata,
+    popv_prediction: Optional[str] = "popv_prediction",
+    save_folder: Optional[str] = None,
+):
+    """
+    Create bar-plot of celltype rations in query as well as reference cells after running popv.
+
+    Parameters
+    ----------
+    adata
+        AnnData object.
+    popv_prediction
+        Key in adata.obs for predictions.
+    save_folder
+        Path to a folder for storing the plot. Defaults to None and plot is not stored.
+
+    Returns
+    ----------
+    Returns axis object of corresponding plot.
+
+    """
+    labels = adata.obs[popv_prediction].astype(str)
+    is_query = adata.obs._dataset == "query"
+    cell_types = np.unique(labels)
+    prop = pd.DataFrame(index=cell_types, columns=["ref", "query"])
+    for x in cell_types:
+        prop.loc[x, "query"] = np.sum(labels[is_query] == x)
+        prop.loc[x, "ref"] = np.sum(labels[~is_query] == x)
+
+    ax = prop.loc[cell_types].plot(
+        kind="bar", figsize=(len(cell_types) * 0.5, 4), logy=True
+    )
+    ax.set_ylabel("Celltype")
+    ax.set_ylabel("log Celltype Abundance")
+    if save_folder is not None:
+        save_path = os.path.join(save_folder, "celltype_prop_barplot.pdf")
         ax.get_figure().savefig(save_path, bbox_inches="tight", dpi=300)
     return ax
 
@@ -229,10 +272,7 @@ def _prediction_eval(
     res_dir="./",
 ):
     """Generate confusion matrix."""
-    x = np.concatenate([labels, pred])
-    types, _ = np.unique(x, return_inverse=True)
-    prop = np.asarray([np.mean(np.asarray(labels) == i) for i in types])
-    prop = pd.DataFrame([types, prop], index=["types", "prop"], columns=types).T
+    types, _ = np.unique(np.concatenate([labels, pred]), return_inverse=True)
     mtx = confusion_matrix(labels, pred, normalize="true")
     df = pd.DataFrame(mtx, columns=types, index=types)
     df = df.loc[np.unique(labels), np.unique(pred)]
@@ -243,7 +283,7 @@ def _prediction_eval(
     plt.tight_layout()
     plt.title(name)
     if res_dir is not None:
-        output_pdf_fn = os.path.join(res_dir, "confusion_matrices.pdf")
+        output_pdf_fn = os.path.join(res_dir, f"confusion_matrices_{name}.pdf")
         pdf = matplotlib.backends.backend_pdf.PdfPages(output_pdf_fn)
         for fig in range(1, plt.gcf().number + 1):
             pdf.savefig(fig)

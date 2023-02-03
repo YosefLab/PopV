@@ -4,6 +4,7 @@ from typing import Optional
 import numpy as np
 import scanpy as sc
 import scvi
+import torch
 
 
 class SCANVI_POPV:
@@ -12,7 +13,7 @@ class SCANVI_POPV:
         batch_key: Optional[str] = "_batch_annotation",
         labels_key: Optional[str] = "_labels_annotation",
         n_epochs_unsupervised: Optional[int] = None,
-        n_epochs_semisupervised: Optional[int] = 20,
+        n_epochs_semisupervised: Optional[int] = None,
         use_gpu: Optional[bool] = False,
         save_folder: Optional[str] = None,
         result_key: Optional[str] = "popv_scanvi_prediction",
@@ -60,72 +61,114 @@ class SCANVI_POPV:
         self.save_folder = save_folder
 
         self.model_kwargs = {
-            "dropout_rate": 0.1,
-            "dispersion": "gene-batch",
-            "n_layers": 2,
+            "dropout_rate": 0.05,
+            "dispersion": "gene",
+            "n_layers": 3,
             "n_latent": 20,
+            "gene_likelihood": "nb",
+            "use_batch_norm": "none",
+            "use_layer_norm": "both",
+            "encode_covariates": True,
         }
+
         self.model_kwargs.update(model_kwargs)
 
-        self.classifier_kwargs = {"n_layers": 1, "dropout_rate": 0.2}
+        self.classifier_kwargs = {"n_layers": 3, "dropout_rate": 0.1}
         self.classifier_kwargs.update(classifier_kwargs)
 
-        self.embedding_dict = {"min_dist": 0.01}
+        self.embedding_dict = {"min_dist": 0.3}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
         logging.info("Integrating data with scANVI")
 
         # Go through obs field with subsampling information and subsample label information.
-        adata.obs["subsampled_labels"] = [
-            label if subsampled else adata.uns["unknown_celltype_label"]
-            for label, subsampled in zip(
-                adata.obs["_labels_annotation"], adata.obs["_ref_subsample"]
-            )
-        ]
+        if "subsampled_labels" not in adata.obs.columns:
+            adata.obs["subsampled_labels"] = [
+                label if subsampled else adata.uns["unknown_celltype_label"]
+                for label, subsampled in zip(
+                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"]
+                )
+            ]
+        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype(
+            "category"
+        )
+        yprior = torch.tensor(
+            [
+                adata.obs["_labels_annotation"].value_counts()[i] / adata.n_obs
+                for i in adata.obs["subsampled_labels"].cat.categories
+                if i is not adata.uns["unknown_celltype_label"]
+            ]
+        )
 
-        pretrained_scanvi_path = adata.uns["_pretrained_scanvi_path"]
+        if self.n_epochs_unsupervised is None:
+            self.n_epochs_unsupervised = round(
+                min(round((10000 / adata.n_obs) * 200), 200)
+            )
 
-        if pretrained_scanvi_path is None:
-            scvi.model.SCVI.setup_anndata(
-                adata,
-                batch_key=self.batch_key,
-                labels_key="subsampled_labels",
-                layer="scvi_counts",
-            )
-            scvi_model = scvi.model.SCVI(adata, **self.model_kwargs)
-            scvi_model.train(
-                train_size=1.0,
-                max_epochs=self.n_epochs_unsupervised,
-                use_gpu=adata.uns["_use_gpu"],
-            )
+        if adata.uns["_prediction_mode"] == "retrain":
+            if adata.uns["_pretrained_scvi_path"] is not None:
+                scvi_model = scvi.model.SCVI.load(
+                    adata.uns["_save_path_trained_models"] + "/scvi", adata=adata
+                )
+            else:
+                scvi.model.SCVI.setup_anndata(
+                    adata,
+                    batch_key=self.batch_key,
+                    labels_key="subsampled_labels",
+                    layer="scvi_counts",
+                )
+                scvi_model = scvi.model.SCVI(adata, **self.model_kwargs)
+                scvi_model.train(
+                    train_size=1.0,
+                    max_epochs=self.n_epochs_unsupervised,
+                    use_gpu=adata.uns["_use_gpu"],
+                    plan_kwargs={"n_epochs_kl_warmup": 20},
+                )
 
             self.model = scvi.model.SCANVI.from_scvi_model(
                 scvi_model,
                 unlabeled_category=adata.uns["unknown_celltype_label"],
                 classifier_parameters=self.classifier_kwargs,
+                y_prior=yprior,
             )
         else:
             query = adata[adata.obs["_dataset"] == "query"].copy()
             self.model = scvi.model.SCANVI.load_query_data(
-                query, pretrained_scanvi_path, freeze_classifier=True
+                query,
+                adata.uns["_save_path_trained_models"] + "/scanvi",
+                freeze_classifier=True,
             )
 
-        if self.n_epochs_unsupervised is None:
-            self.n_epochs_unsupervised = np.min(
-                [round((20000 / adata.n_obs) * 200), 200]
+        if adata.uns["_prediction_mode"] == "fast":
+            if self.n_epochs_semisupervised is None:
+                self.n_epochs_semisupervised = 1
+            self.model.train(
+                max_epochs=1,
+                batch_size=512,
+                n_samples_per_label=20,
+                train_size=1.0,
+                use_gpu=adata.uns["_use_gpu"],
+                plan_kwargs={"n_steps_kl_warmup": 1},
             )
-
-        self.model.train(
-            max_epochs=self.n_epochs_semisupervised,
-            train_size=1.0,
-            use_gpu=adata.uns["_use_gpu"],
-        )
-
-        adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)
-
-        if self.save_folder is not None:
-            self.model.save(self.save_folder, overwrite=True, save_anndata=False)
+        else:
+            if self.n_epochs_semisupervised is None:
+                self.n_epochs_semisupervised = 20
+            self.model.train(
+                max_epochs=self.n_epochs_semisupervised,
+                batch_size=512,
+                n_samples_per_label=20,
+                train_size=1.0,
+                use_gpu=adata.uns["_use_gpu"],
+                plan_kwargs={"n_epochs_kl_warmup": 20},
+            )
+        if adata.uns["_prediction_mode"] == "retrain":
+            if adata.uns["_save_path_trained_models"] is not None:
+                self.model.save(
+                    adata.uns["_save_path_trained_models"] + "/scanvi",
+                    save_anndata=False,
+                    overwrite=True,
+                )
 
     def predict(self, adata):
         logging.info(
@@ -133,15 +176,20 @@ class SCANVI_POPV:
         )
 
         adata.obs[self.result_key] = self.model.predict(adata)
+        if adata.uns["_return_probabilities"]:
+            adata.obs[self.result_key + "_probabilities"] = np.max(
+                self.model.predict(adata, soft=True), axis=1
+            )
 
     def compute_embedding(self, adata):
-        logging.info(
-            'Saving UMAP of scanvi results to adata.obs["{}"]'.format(
-                self.embedding_key
+        if adata.uns["_compute_embedding"]:
+            logging.info(
+                'Saving UMAP of scanvi results to adata.obs["{}"]'.format(
+                    self.embedding_key
+                )
             )
-        )
-
-        sc.pp.neighbors(adata, use_rep="X_scanvi")
-        adata.obsm[self.embedding_key] = sc.tl.umap(
-            adata, copy=True, **self.embedding_dict
-        ).obsm["X_umap"]
+            adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)
+            sc.pp.neighbors(adata, use_rep="X_scanvi")
+            adata.obsm[self.embedding_key] = sc.tl.umap(
+                adata, copy=True, **self.embedding_dict
+            ).obsm["X_umap"]

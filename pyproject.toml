@@ -12,8 +12,8 @@ classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Science/Research",
   "Natural Language :: English",
-  "Programming Language :: Python :: 3.7",
-  "Programming Language :: Python :: 3.8"
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9"
 ]
 
 description = "Automatic annotation of single cell data using a labelled reference dataset including various methods and giving certainty across those methods."
@@ -24,9 +24,11 @@ version = "0.1.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.7,<3.10"
+python = ">=3.8,<3.10"
+anndata = "^0.8"
 bbknn = "^1.5.1"
 black = {version = ">=22.3", optional = true}
+celltypist = "^1.3.0"
 codecov = {version = ">=2.0.8", optional = true}
 flake8 = {version = ">=3.7.7", optional = true}
 gdown = "^4.6.0"
@@ -46,7 +48,7 @@ nbsphinx = {version = "*", optional = true}
 nbsphinx-link = {version = "*", optional = true}
 numpy = "1.21.6"
 onclass = "^1.2"
-pandas = ">=1.0"
+pandas = ">=1.4"
 pre-commit = {version = ">=2.7.1", optional = true}
 pytest = {version = ">=4.4", optional = true}
 rich = ">=9.1.0"
@@ -54,7 +56,7 @@ scanorama = "^1.7.3"
 scanpy = "^1.9.1"
 scikit-learn = ">0.21.2,<1.0"
 scikit-misc = ">=0.1"
-scvi-tools = ">=0.18.0"
+scvi-tools = ">=0.20.0"
 six = "1.15.0"
 tensorflow = "^2.11.0"
 tqdm = "4.64.0"
@@ -64,7 +66,7 @@ protobuf = "3.19"
 obonet = "^0.3.1"
 
 [tool.poetry.extras]
-dev = ["black", "pytest", "flake8", "codecov", "scanpy", "loompy", "jupyter", "nbformat", "nbconvert", "pre-commit", "isort"]
+dev = ["black", "pytest", "flake8", "codecov", "loompy", "jupyter", "nbformat", "nbconvert", "pre-commit", "isort"]
 
 [tool.poetry.dev-dependencies]
 
