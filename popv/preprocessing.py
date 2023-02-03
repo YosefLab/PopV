@@ -323,7 +323,9 @@ class Process_Query:
                     inplace=False,
                     batch_key="_batch_annotation",
                 )["highly_variable"]
-            except ValueError:  # seurat_v3 tends to error with singularities then use Poisson hvg.
+            except (
+                ValueError
+            ):  # seurat_v3 tends to error with singularities then use Poisson hvg.
                 self.adata.var[
                     "highly_variable"
                 ] = sc.experimental.pp.highly_variable_genes(

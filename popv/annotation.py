@@ -47,7 +47,7 @@ def annotate_data(
         else ["knn_on_scvi", "scanvi", "svm", "rf", "onclass", "celltypist"]
     )
 
-    if adata.uns["_cl_obo_file"] == False and "onclass" in methods:
+    if adata.uns["_cl_obo_file"] is False and "onclass" in methods:
         methods.remove("onclass")
 
     methods_kwargs = methods_kwargs if methods_kwargs else {}
@@ -64,7 +64,8 @@ def annotate_data(
     logging.info(f"Using predictions {all_prediction_keys} for PopV consensus")
     adata.uns["prediction_keys"] = all_prediction_keys
     compute_consensus(adata, all_prediction_keys)
-    if adata.uns["_cl_obo_file"] == False:
+    # No ontology prediction if ontology is set to False.
+    if adata.uns["_cl_obo_file"] is False:
         adata.obs[["popv_prediction", "popv_prediction_score"]] = adata.obs[
             ["popv_majority_vote_prediction", "popv_majority_vote_score"]
         ]

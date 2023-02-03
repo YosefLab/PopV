@@ -38,7 +38,6 @@ def _ontology_accuracy(adata, pred_key, gt_key, obofile, save_key=None):
 
 
 def _fine_ontology_sibling_accuracy(adata, obofile, pred_key, gt_key, save_key=None):
-
     """
     Calculates the fine ontology accuracy and also determines the distance to siblings
     """

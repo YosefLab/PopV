@@ -5,7 +5,7 @@ name: PopV
 
 on:
     push:
-        branches: [main, can_refactored]
+        branches: [main, can-refactored]
     pull_request:
         branches: [main]
 
@@ -15,14 +15,16 @@ jobs:
         timeout-minutes: 20
         strategy:
             matrix:
-                python-version: [3.7, 3.8, 3.9]
+                python-version: ["3.8", "3.9"]
 
         steps:
             - uses: actions/checkout@v2
+
             - name: Set up Python ${{ matrix.python-version }}
               uses: actions/setup-python@v2
               with:
                   python-version: ${{ matrix.python-version }}
+
             - name: Cache pip
               uses: actions/cache@v2
               with:
@@ -31,21 +33,32 @@ jobs:
                   restore-keys: |
                       ${{ runner.os }}-pip-v1-
             - name: Install dependencies
+              id: dependencies
               run: |
                   pip install pytest-cov
-                  pip install .[dev,pymde]
+                  pip install .[dev,pymde,autotune]
+            # Following checks are independent and are run even if one fails
             - name: Lint with flake8
               run: |
                   flake8
+              if: ${{ steps.dependencies.outcome == 'success' && always() }}
+
             - name: Format with black
               run: |
                   black --check .
+              if: ${{ steps.dependencies.outcome == 'success' && always() }}
+
             - name: Import sort
               run: |
                   isort --check-only .
+              if: ${{ steps.dependencies.outcome == 'success' && always() }}
+
             - name: Test with pytest
               run: |
-                  pytest --cov-report=xml --cov=popv
+                  pytest --cov-report=xml --color=yes
+              if: ${{ steps.dependencies.outcome == 'success' && always() }}
+            # --------------------------------------------------------------
+
             - name: After success
               run: |
                   codecov
