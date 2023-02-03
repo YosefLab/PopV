@@ -122,7 +122,7 @@ class Process_Query:
                 )["var_names"]
                 if self.prediction_mode == "inference":
                     pretrained_scanvi_genes = torch.load(
-                        self.save_path_trained_models + "/scanvi/model.pt", device="cpu"
+                        self.save_path_trained_models + "/scanvi/model.pt", map_location="cpu"
                     )["var_names"]
                     assert list(pretrained_scvi_genes) == list(
                         pretrained_scanvi_genes
