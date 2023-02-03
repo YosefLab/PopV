@@ -48,7 +48,7 @@ nbsphinx = {version = "*", optional = true}
 nbsphinx-link = {version = "*", optional = true}
 numpy = "1.21.6"
 onclass = "^1.2"
-pandas = ">=1.0"
+pandas = ">=1.4"
 pre-commit = {version = ">=2.7.1", optional = true}
 pytest = {version = ">=4.4", optional = true}
 rich = ">=9.1.0"
@@ -56,7 +56,7 @@ scanorama = "^1.7.3"
 scanpy = "^1.9.1"
 scikit-learn = ">0.21.2,<1.0"
 scikit-misc = ">=0.1"
-scvi-tools = { git = "https://github.com/scverse/scvi-tools.git", tag = "0.20.0b1" }
+scvi-tools = ">=0.20.0"
 six = "1.15.0"
 tensorflow = "^2.11.0"
 tqdm = "4.64.0"

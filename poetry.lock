@@ -4890,13 +4890,15 @@ test = ["asv", "gmpy2", "mpmath", "pooch", "pytest", "pytest-cov", "pytest-timeo
 
 [[package]]
 name = "scvi-tools"
-version = "0.20.0b1"
+version = "0.20.0"
 description = "Deep probabilistic analysis of single-cell omics data."
 category = "main"
 optional = false
 python-versions = ">=3.8"
-files = []
-develop = false
+files = [
+    {file = "scvi_tools-0.20.0-py3-none-any.whl", hash = "sha256:ab274c73a70eecc688e6925c0167e53ac155cb1860ff871577eff5d8f712ab24"},
+    {file = "scvi_tools-0.20.0.tar.gz", hash = "sha256:7adf1e18f59fecd6bfc0481ed3c66b927a647390547b84c74ac0b0abd4fdd5d0"},
+]
 
 [package.dependencies]
 anndata = ">=0.7.5"
@@ -4929,12 +4931,6 @@ docs = ["furo", "ipython", "myst-parser", "nbsphinx", "sphinx (>=4.1)", "sphinx-
 hub = ["huggingface-hub"]
 pymde = ["pymde"]
 tutorials = ["genomepy", "huggingface-hub", "leidenalg", "loompy", "pymde", "pynndescent", "python-igraph", "scanpy", "scikit-misc"]
-
-[package.source]
-type = "git"
-url = "https://github.com/scverse/scvi-tools.git"
-reference = "0.20.0b1"
-resolved_reference = "47bf4a5b77fc57e4591d0b5729a3e70672c089b5"
 
 [[package]]
 name = "seaborn"
@@ -6426,4 +6422,4 @@ dev = ["black", "pytest", "flake8", "codecov", "jupyter", "nbformat", "nbconvert
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.10"
-content-hash = "ea18c56419a61aad1cb02586226cfcd338f888711e1acfbb6da678e927474f1e"
+content-hash = "359bc0c4bebbd6d0cfcbedaea34df5e8b39696f564c8f7aa4d1217f165b2cf3a"
