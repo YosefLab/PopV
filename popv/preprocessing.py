@@ -118,7 +118,8 @@ class Process_Query:
         else:
             if self.pretrained_scvi_path is not None:
                 pretrained_scvi_genes = torch.load(
-                    self.pretrained_scvi_path + "model.pt"
+                    self.pretrained_scvi_path + "model.pt",
+                    map_location="cpu",
                 )["var_names"]
                 if self.prediction_mode == "inference":
                     pretrained_scanvi_genes = torch.load(
