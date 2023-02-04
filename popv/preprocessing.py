@@ -1,7 +1,7 @@
 import logging
 import os
 import subprocess
-from typing import Optional
+from typing import List, Optional, Union
 
 import anndata
 import numpy as np
@@ -23,17 +23,15 @@ class Process_Query:
         query_batch_key: Optional[str] = None,
         query_layers_key: Optional[str] = None,
         prediction_mode: Optional[str] = "retrain",
-        cl_obo_file: Optional[str] = None,
-        cl_ontology_file: Optional[str] = None,
-        nlp_emb_file: Optional[str] = None,
+        cl_obo_folder: Optional[Union[List, str, bool]] = None,
         unknown_celltype_label: Optional[str] = "unknown",
         n_samples_per_label: Optional[int] = 300,
         pretrained_scvi_path: Optional[str] = None,
         save_path_trained_models: Optional[str] = "tmp/",
         hvg: Optional[int] = 4000,
-        use_gpu: Optional[bool] = False,
+        use_gpu: Optional[bool] = True,
         compute_embedding: Optional[bool] = True,
-        return_probabilities: Optional[bool] = False,
+        return_probabilities: Optional[bool] = True,
     ) -> None:
         """
         Processes the query and reference dataset in preperation for the annotation pipeline.
@@ -63,12 +61,10 @@ class Process_Query:
             "retrain": Train all prediction models and saves them to disk if save_path_trained_models is not None.
             "inference": Classify all cells based on pretrained models.
             "fast": Fast inference using only query cells and single epoch in scArches.
-        cl_obo_file
-            File containing the cell-type obo for Onclass. Setting it to false will disable ontology use.
-        cl_ontology_file
-            File containing the cell-type ontologies for Onclass.
-        nlp_emb_file
-            File containing nlp embedding of cell-types.
+        cl_obo_folder
+            Folder containing the cell-type obo for Onclass, ontologies for Onclass and nlp embedding of cell-types.
+            Passing a list will use element 1 as obo, element 2 as ontologies and element 3 as nlp embedding.
+            Setting it to false will disable ontology use.
         unknown_celltype_label
             If query_labels_key is not None, cells with label unknown_celltype_label
             will be treated as unknown and will be predicted by the model.
@@ -118,7 +114,8 @@ class Process_Query:
         else:
             if self.pretrained_scvi_path is not None:
                 pretrained_scvi_genes = torch.load(
-                    self.pretrained_scvi_path + "model.pt"
+                    self.pretrained_scvi_path + "model.pt",
+                    map_location="cpu",
                 )["var_names"]
                 if self.prediction_mode == "inference":
                     pretrained_scanvi_genes = torch.load(
@@ -163,7 +160,7 @@ class Process_Query:
             self.n_samples_per_label = n_samples_per_label
         self.compute_embedding = compute_embedding
 
-        if cl_obo_file is None:
+        if cl_obo_folder is None:
             self.cl_obo_file = (
                 os.path.dirname(os.path.dirname(__file__)) + "/ontology/cl.obo"
             )
@@ -184,10 +181,18 @@ class Process_Query:
                         "cl.ontology.nlp.emb",
                     ]
                 )
+        elif cl_obo_folder is False:
+            self.cl_obo_file = False
+            self.cl_ontology_file = False
+            self.nlp_emb_file = False
+        elif cl_obo_folder is list:
+            self.cl_obo_file = cl_obo_folder[0]
+            self.cl_ontology_file = cl_obo_folder[1]
+            self.nlp_emb_file = cl_obo_folder[2]
         else:
-            self.cl_obo_file = cl_obo_file
-            self.cl_ontology_file = cl_ontology_file
-            self.nlp_emb_file = nlp_emb_file
+            self.cl_obo_file = cl_obo_folder + "cl.obo"
+            self.cl_ontology_file = cl_obo_folder + "cl.ontology"
+            self.nlp_emb_file = cl_obo_folder + "cl.ontology.nlp.emb"
 
         self.check_validity_anndata(self.query_adata, "query")
         self.setup_dataset(self.query_adata, "query", add_meta="_query")
