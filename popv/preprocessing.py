@@ -31,9 +31,9 @@ class Process_Query:
         pretrained_scvi_path: Optional[str] = None,
         save_path_trained_models: Optional[str] = "tmp/",
         hvg: Optional[int] = 4000,
-        use_gpu: Optional[bool] = False,
+        use_gpu: Optional[bool] = True,
         compute_embedding: Optional[bool] = True,
-        return_probabilities: Optional[bool] = False,
+        return_probabilities: Optional[bool] = True,
     ) -> None:
         """
         Processes the query and reference dataset in preperation for the annotation pipeline.
