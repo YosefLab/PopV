@@ -12,7 +12,6 @@ class CELLTYPIST:
         result_key: Optional[str] = "popv_celltypist_prediction",
         method_dict: Optional[dict] = {},
         classifier_dict: Optional[dict] = {},
-        embedding_dict: Optional[dict] = {},
     ) -> None:
         """
         Class to compute KNN classifier after BBKNN integration.
@@ -25,14 +24,10 @@ class CELLTYPIST:
             Key in obs field of adata for cell-type information.
         result_key
             Key in obs in which celltype annotation results are stored.
-        embedding_key
-            Key in obsm in which UMAP embedding of integrated data is stored.
         method_dict
             Additional parameters for celltypist training. Options at celltypist.train
         classifier_dict
             Dictionary to supply non-default values for celltypist annotation. Options at celltypist.annotate
-        embedding_dict
-            Without effect.
         """
 
         self.batch_key = batch_key

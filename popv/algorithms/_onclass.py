@@ -195,13 +195,13 @@ class ONCLASS:
             onclass_seen = np.argmax(onclass_pred[0], axis=1)
             pred_label = [train_model.i2co[ind] for ind in onclass_seen]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
-            adata.obs["onclass_seen"] = pred_label_str
+            adata.obs["popv_onclass_seen"] = pred_label_str
 
             if adata.uns["_return_probabilities"]:
                 adata.obs[self.result_key + "_probabilities"] = np.max(
                     onclass_pred[1], axis=1
                 )
-                adata.obs["onclass_seen" + "_probabilities"] = np.max(
+                adata.obs["popv_onclass_seen" + "_probabilities"] = np.max(
                     onclass_pred[0], axis=1
                 )
 

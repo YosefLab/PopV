@@ -118,7 +118,6 @@ def ontology_vote_onclass(
     adata: anndata.AnnData,
     prediction_keys: list,
     save_key: Optional[str] = "popv_prediction",
-    output_depth: Optional[bool] = False,
 ):
     """
     Compute prediction using ontology aggregation method.
@@ -131,8 +130,6 @@ def ontology_vote_onclass(
         Keys in adata.obs containing predicted cell_types.
     save_key
         Name of the field in adata.obs to store the consensus prediction.
-    output_depth
-        Output also reports depth in the ontology of consensus prediction.
 
     Returns
     ----------
@@ -196,12 +193,18 @@ def ontology_vote_onclass(
         depths[ind] = depth[celltype_consensus]
     adata.obs[save_key] = aggregate_ontology_pred
     adata.obs[save_key + "_score"] = scores
-    adata.obs[save_key + "_score"] = adata.obs[save_key + "_score"].astype("category")
-    if output_depth:
-        adata.obs[save_key + "_depth"] = depths
-        adata.obs[save_key + "_onclass_relative_depth"] = (
-            np.array(onclass_depth) - adata.obs[save_key + "_depth"]
-        )
+    adata.obs[save_key + "_depth"] = depths
+    adata.obs[save_key + "_onclass_relative_depth"] = (
+        np.array(onclass_depth) - adata.obs[save_key + "_depth"]
+    )
+    # Change numeric values to categoricals.
+    adata.obs[
+        [save_key + "_score", save_key + "_depth", save_key + "_onclass_relative_depth"]
+    ] = adata.obs[
+        [save_key + "_score", save_key + "_depth", save_key + "_onclass_relative_depth"]
+    ].astype(
+        "category"
+    )
     return adata
 
 

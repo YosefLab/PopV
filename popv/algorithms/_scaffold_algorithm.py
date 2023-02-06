@@ -1,14 +1,17 @@
+# Method that hightlights how to implement a new classifier. All class items are necessary but can contain Pass as only function argument.
+
 import logging
+import pickle
+from ast import Pass
 from typing import Optional
 
-import anndata
 import numpy as np
-import scanorama
-import scanpy as sc
-from sklearn.neighbors import KNeighborsClassifier
+
+# Import classifier here.
 
 
-class SCANORAMA:
+class NEW_ALGORITHM:
+    # Remove embedding key if not an integration method.
     def __init__(
         self,
         batch_key: Optional[str] = "_batch_annotation",
@@ -42,54 +45,41 @@ class SCANORAMA:
 
         self.batch_key = batch_key
         self.labels_key = labels_key
+        self.layers_key = layers_key
         self.result_key = result_key
         self.embedding_key = embedding_key
 
-        self.method_dict = {"dimred": 50}
+        # Necessary for integration method. Contains parameters for integration method.
+        self.method_dict = {}
         self.method_dict.update(method_dict)
 
-        self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
+        # Necessary for classifier. Contains parameters for classifier.
+        self.classifier_dict = {}
         self.classifier_dict.update(classifier_dict)
 
-        self.embedding_dict = {"min_dist": 0.1}
+        # Necessary for integration method. Contains parameters for UMAP embedding.
+        self.embedding_dict = {}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
-        logging.info("Integrating data with scanorama")
+        logging.info("Integrating data with new integration method")
 
-        _adatas = [
-            adata[adata.obs[self.batch_key] == i]
-            for i in np.unique(adata.obs[self.batch_key])
-        ]
-        scanorama.integrate_scanpy(_adatas, **self.method_dict)
-        tmp_adata = anndata.concat(_adatas)
-        adata.obsm["X_scanorama"] = tmp_adata[adata.obs_names].obsm["X_scanorama"]
+        # adata.obsm["X_new_method"] = embedded_data
 
-    def predict(self, adata, result_key="popv_knn_on_scanorama_prediction"):
-        logging.info(f'Saving knn on scanorama results to adata.obs["{result_key}"]')
-
-        ref_idx = adata.obs["_dataset"] == "ref"
-        train_X = adata[ref_idx].obsm["X_scanorama"]
-        train_Y = adata[ref_idx].obs[self.labels_key].to_numpy()
-
-        knn = KNeighborsClassifier(**self.classifier_dict)
-        knn.fit(train_X, train_Y)
-        knn_pred = knn.predict(adata.obsm["X_scanorama"])
-
-        # save_results
-        adata.obs[result_key] = knn_pred
-
-        if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + "_probabilities"] = np.max(
-                knn.predict_proba(adata.obsm["X_scanorama"]), axis=1
+    def predict(self, adata):
+        logging.info(
+            'Computing new classifier method. Storing prediction in adata.obs["{}"]'.format(
+                self.result_key
             )
+        )
+        # adata.obs[self.result_key] = classifier_results
 
     def compute_embedding(self, adata):
         if adata.uns["_compute_embedding"]:
             logging.info(
-                f'Saving UMAP of scanorama results to adata.obs["{self.embedding_key}"]'
+                f'Saving UMAP of new integration method to adata.obs["{self.embedding_key}"]'
             )
-            sc.pp.neighbors(adata, use_rep="X_scanorama")
-            adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, **self.embedding_dict
-            ).obsm["X_umap"]
+            # sc.pp.neighbors(adata, use_rep="embedding_space")
+            # adata.obsm[self.embedding_key] = sc.tl.umap(
+            #     adata, copy=True, **self.embedding_dict
+            # ).obsm["X_umap"]
