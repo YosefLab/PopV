@@ -12,6 +12,7 @@ class NEW_ALGORITHM:
         self,
         batch_key: Optional[str] = "_batch_annotation",
         labels_key: Optional[str] = "_labels_annotation",
+        layers_key: Optional[str] = None,
         result_key: Optional[str] = "popv_knn_on_scanorama_prediction",
         embedding_key: Optional[str] = "X_umap_scanorma_popv",
         method_dict: Optional[dict] = {},
@@ -27,6 +28,8 @@ class NEW_ALGORITHM:
             Key in obs field of adata for batch information.
         labels_key
             Key in obs field of adata for cell-type information.
+        layers_key
+            Layer in adata used for Onclass prediction.
         result_key
             Key in obs in which celltype annotation results are stored.
         embedding_key
@@ -42,6 +45,7 @@ class NEW_ALGORITHM:
         self.batch_key = batch_key
         self.labels_key = labels_key
         self.layers_key = layers_key
+
         self.result_key = result_key
         self.embedding_key = embedding_key
 
