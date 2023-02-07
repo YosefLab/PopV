@@ -193,6 +193,11 @@ class Process_Query:
             self.cl_obo_file = cl_obo_folder + "cl.obo"
             self.cl_ontology_file = cl_obo_folder + "cl.ontology"
             self.nlp_emb_file = cl_obo_folder + "cl.ontology.nlp.emb"
+        try:
+            with open(self.cl_obo_file) if self.cl_obo_file else True:
+                pass
+        except FileNotFoundError:
+            raise FileNotFoundError(f"{self.cl_obo_file} doesn't exist. Check folder")
 
         self.check_validity_anndata(self.query_adata, "query")
         self.setup_dataset(self.query_adata, "query", add_meta="_query")
