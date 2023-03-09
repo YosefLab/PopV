@@ -144,7 +144,7 @@ def make_ontology_dag(obofile, lowercase=False):
     g
         Graph containing all cell-types
     """
-    co = obonet.read_obo(obofile)
+    co = obonet.read_obo(obofile, encoding="utf-8")
     id_to_name = {id_: data.get("name") for id_, data in co.nodes(data=True)}
     name_to_id = {
         data["name"]: id_ for id_, data in co.nodes(data=True) if ("name" in data)
