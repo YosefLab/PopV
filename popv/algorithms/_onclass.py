@@ -187,7 +187,7 @@ class ONCLASS:
             adata.obs["onclass_seen"] = pred_label_str
         else:
             onclass_pred = train_model.Predict(
-                corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.
+                corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.0
             )
             pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
@@ -202,7 +202,9 @@ class ONCLASS:
                 adata.obs[self.result_key + "_probabilities"] = np.max(
                     onclass_pred[1], axis=1
                 ) / onclass_pred[1].sum(1)
-                adata.obsm['onclass_probabilities'] = onclass_pred[1]/onclass_pred[1].sum(1, keepdims=True)
+                adata.obsm["onclass_probabilities"] = onclass_pred[1] / onclass_pred[
+                    1
+                ].sum(1, keepdims=True)
                 adata.obs["popv_onclass_seen" + "_probabilities"] = np.max(
                     onclass_pred[0], axis=1
                 )

@@ -83,7 +83,9 @@ class AlluvialTool:
 
     def read_input_from_list(self):
         data_table = np.array(self.input)
-        assert len(set(data_table[:, 0]).intersection(set(data_table[:, 1])))==0, 'Column a and b have intersecting elements, this is not supported.'
+        assert (
+            len(set(data_table[:, 0]).intersection(set(data_table[:, 1]))) == 0
+        ), "Column a and b have intersecting elements, this is not supported."
         data_dic = defaultdict(Counter)
         for line in data_table:
             data_dic[line[0]][line[1]] += 1

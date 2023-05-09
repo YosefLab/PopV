@@ -75,4 +75,4 @@ def _fine_ontology_sibling_accuracy(adata, obofile, pred_key, gt_key, save_key=N
 
         ontology_distance_dict[combination] = score
         adata.obs.loc[name, save_key] = score
-    adata.obs[save_key] = adata.obs[save_key].astype(str).astype('category')
+    adata.obs[save_key] = adata.obs[save_key].astype(str).astype("category")

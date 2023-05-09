@@ -108,8 +108,8 @@ class Process_Query:
         self.genes = None
         if self.prediction_mode == "fast":
             self.genes = torch.load(
-                    self.pretrained_scvi_path + "model.pt",
-                    map_location="cpu",
+                self.pretrained_scvi_path + "model.pt",
+                map_location="cpu",
             )["var_names"]
         else:
             if self.pretrained_scvi_path is not None:
