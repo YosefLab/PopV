@@ -52,18 +52,24 @@ def annotate_data(
 
     methods_kwargs = methods_kwargs if methods_kwargs else {}
 
-    all_prediction_keys = adata.uns["prediction_keys"]
+    all_prediction_keys = []
+    all_prediction_keys_seen = []
     for method in methods:
         current_method = getattr(algorithms, method)(**methods_kwargs.pop(method, {}))
         current_method.compute_integration(adata)
         current_method.predict(adata)
         current_method.compute_embedding(adata)
         all_prediction_keys += [current_method.result_key]
+        if hasattr(current_method, "seen_result_key"):
+            all_prediction_keys_seen += [current_method.seen_result_key]
+        else:
+            all_prediction_keys_seen += [current_method.result_key]
 
     # Here we compute the consensus statistics
     logging.info(f"Using predictions {all_prediction_keys} for PopV consensus")
     adata.uns["prediction_keys"] = all_prediction_keys
-    compute_consensus(adata, all_prediction_keys)
+    adata.uns["prediction_keys_seen"] = all_prediction_keys_seen
+    compute_consensus(adata, all_prediction_keys_seen)
     # No ontology prediction if ontology is set to False.
     if adata.uns["_cl_obo_file"] is False:
         adata.obs[["popv_prediction", "popv_prediction_score"]] = adata.obs[
@@ -82,6 +88,7 @@ def annotate_data(
                 "popv_prediction_score",
                 "popv_majority_vote_prediction",
                 "popv_majority_vote_score",
+                "popv_parent",
             ]
         ].to_csv(prediction_save_path)
 

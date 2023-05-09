@@ -53,13 +53,13 @@ class BBKNN:
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         self.classifier_dict.update(classifier_dict)
 
-        self.embedding_dict = {"min_dist": 0.5}
+        self.embedding_dict = {"min_dist": 0.1}
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
         logging.info("Integrating data with bbknn")
 
-        sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_dict)
+        i(adata, batch_key=self.batch_key, **self.method_dict)
 
     def predict(self, adata):
         logging.info(f'Saving knn on bbknn results to adata.obs["{self.result_key}"]')

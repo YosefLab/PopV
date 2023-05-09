@@ -107,10 +107,10 @@ class Process_Query:
         self.return_probabilities = return_probabilities
         self.genes = None
         if self.prediction_mode == "fast":
-            self.genes = list(
-                torch.load(self.pretrained_scvi_path + "/model.pt")["var_names"],
-                device="cpu",
-            )
+            self.genes = torch.load(
+                    self.pretrained_scvi_path + "model.pt",
+                    map_location="cpu",
+            )["var_names"]
         else:
             if self.pretrained_scvi_path is not None:
                 pretrained_scvi_genes = torch.load(
@@ -299,7 +299,7 @@ class Process_Query:
             )
             if difference_batches:
                 logging.warning(
-                    f"The following batches will be excluded from annotation because they have less than 5 cells:{difference_batches}."
+                    f"The following batches will be excluded from annotation because they have less than 9 cells:{difference_batches}."
                 )
 
             # Sort data based on batch for efficiency downstream during SCANORAMA
@@ -317,7 +317,7 @@ class Process_Query:
         sc.pp.filter_cells(self.adata, min_counts=30, inplace=True)
         if len(zero_cell_names) > 0:
             logging.warning(
-                f"The following cells will be excluded from annotation because they have low expression:{zero_cell_names}, likely due to highly variable gene selection. We recommend you subset the data yourself and set hvg to False."
+                f"The following cells will be excluded from annotation because they have low expression:{zero_cell_names}."
             )
 
         self.adata.layers["scvi_counts"] = self.adata.X.copy()

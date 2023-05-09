@@ -278,6 +278,7 @@ def _prediction_eval(
     df = df.loc[np.unique(labels), np.unique(pred)]
     df = df.rename_axis(x_label, axis="columns")
     df = df.rename_axis(y_label)
+    df = df[df.idxmax(axis=1).unique()]
     plt.figure(figsize=(15, 12))
     sns.heatmap(df, linewidths=0.005, cmap="OrRd")
     plt.tight_layout()

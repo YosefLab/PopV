@@ -16,6 +16,7 @@ class ONCLASS:
         max_iter: Optional[int] = 30,
         cell_ontology_obs_key: Optional[str] = None,
         result_key: Optional[str] = "popv_onclass_prediction",
+        seen_result_key: Optional[str] = "popv_onclass_seen",
     ) -> None:
         """
         Class to compute KNN classifier after BBKNN integration.
@@ -38,6 +39,7 @@ class ONCLASS:
         self.batch_key = batch_key
         self.labels_key = labels_key
         self.result_key = result_key
+        self.seen_result_key = seen_result_key
         self.layers_key = layers_key
 
         if cell_ontology_obs_key is None:
@@ -186,7 +188,7 @@ class ONCLASS:
             adata.obs["onclass_seen"] = pred_label_str
         else:
             onclass_pred = train_model.Predict(
-                corr_test_feature, use_normalize=False, refine=True, unseen_ratio=0.1
+                corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.
             )
             pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
@@ -195,12 +197,13 @@ class ONCLASS:
             onclass_seen = np.argmax(onclass_pred[0], axis=1)
             pred_label = [train_model.i2co[ind] for ind in onclass_seen]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
-            adata.obs["popv_onclass_seen"] = pred_label_str
+            adata.obs[self.seen_result_key] = pred_label_str
 
             if adata.uns["_return_probabilities"]:
                 adata.obs[self.result_key + "_probabilities"] = np.max(
                     onclass_pred[1], axis=1
-                )
+                ) / onclass_pred[1].sum(1)
+                adata.obsm['onclass_probabilities'] = onclass_pred[1]/onclass_pred[1].sum(1, keepdims=True)
                 adata.obs["popv_onclass_seen" + "_probabilities"] = np.max(
                     onclass_pred[0], axis=1
                 )

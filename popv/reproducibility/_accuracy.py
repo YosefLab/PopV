@@ -14,7 +14,7 @@ def _absolute_accuracy(adata, pred_key, gt_key, save_key=None):
 
 
 def _ontology_accuracy(adata, pred_key, gt_key, obofile, save_key=None):
-    G = _utils.make_ontology_dag(obofile, lowercase=True).reverse()
+    G = _utils.make_ontology_dag(obofile, lowercase=False).reverse()
     if not save_key:
         save_key = "ontology_accuracy"
     adata.obs[save_key] = "na"
@@ -34,7 +34,6 @@ def _ontology_accuracy(adata, pred_key, gt_key, obofile, save_key=None):
     adata.obs[save_key] = adata.obs.apply(
         lambda x: match_type(x[pred_key], x[gt_key]), axis=1
     )
-    return adata.obs[save_key]
 
 
 def _fine_ontology_sibling_accuracy(adata, obofile, pred_key, gt_key, save_key=None):
@@ -45,35 +44,35 @@ def _fine_ontology_sibling_accuracy(adata, obofile, pred_key, gt_key, save_key=N
         save_key = pred_key + "_ontology_distance"
     adata.obs[save_key] = None
 
-    dag = _utils.make_ontology_dag(obofile, lowercase=True).reverse()
+    dag = _utils.make_ontology_dag(obofile, lowercase=False).reverse()
 
     ontology_distance_dict = {}
 
     for name, pred_ct, gt_ct in zip(
         adata.obs_names, adata.obs[pred_key], adata.obs[gt_key]
     ):
-        pred_ct = pred_ct.lower()
-        gt_ct = gt_ct.lower()
-
         score = None
         combination = f"{pred_ct}_{gt_ct}"
         if combination in ontology_distance_dict:
             score = ontology_distance_dict[combination]
         else:
-            if nx.has_path(dag, source=pred_ct, target=gt_ct):
-                score = len(nx.shortest_path(dag, source=pred_ct, target=gt_ct)) - 1
+            if pred_ct == gt_ct:
+                score = 0
+            elif nx.has_path(dag, source=pred_ct, target=gt_ct):
+                score = nx.shortest_path_length(dag, source=pred_ct, target=gt_ct) - 1
             elif nx.has_path(dag, target=pred_ct, source=gt_ct):
-                score = len(nx.shortest_path(dag, source=gt_ct, target=pred_ct)) - 1
+                score = nx.shortest_path_length(dag, source=gt_ct, target=pred_ct) - 1
                 score *= -1
             else:
                 paths = nx.algorithms.simple_paths.shortest_simple_paths(
                     nx.Graph(dag), source=pred_ct, target=gt_ct
                 )
-                if len(paths) == 0:
+                path = next(paths, None)
+                if path is None:
                     score = 1000
                 else:
-                    score = len(next(paths)) - 1
-                    score = str(score) + "_sib"
+                    score = str(len(path) - 1) + "_sib"
 
         ontology_distance_dict[combination] = score
-    adata.obs[save_key][name] = score
+        adata.obs.loc[name, save_key] = score
+    adata.obs[save_key] = adata.obs[save_key].astype(str).astype('category')
