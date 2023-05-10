@@ -59,7 +59,7 @@ class BBKNN:
     def compute_integration(self, adata):
         logging.info("Integrating data with bbknn")
 
-        i(adata, batch_key=self.batch_key, **self.method_dict)
+        sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_dict)
 
     def predict(self, adata):
         logging.info(f'Saving knn on bbknn results to adata.obs["{self.result_key}"]')
