@@ -1,4 +1,3 @@
-<img src="https://github.com/yoseflab/popv/PopV_logo.png" width="400" alt="popv">
 
 [![Stars](https://img.shields.io/github/stars/yoseflab/popv?logo=GitHub&color=yellow)](https://github.com/YosefLab/popv/stargazers)
 [![PyPI](https://img.shields.io/pypi/v/popv.svg)](https://pypi.org/project/popv)
