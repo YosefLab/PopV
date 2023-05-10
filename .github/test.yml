@@ -5,7 +5,7 @@ name: PopV
 
 on:
     push:
-        branches: [main, can-refactored]
+        branches: [main]
     pull_request:
         branches: [main]
 
@@ -36,7 +36,7 @@ jobs:
               id: dependencies
               run: |
                   pip install pytest-cov
-                  pip install .[dev,pymde,autotune]
+                  pip install .[dev]
             # Following checks are independent and are run even if one fails
             - name: Lint with flake8
               run: |
@@ -55,7 +55,7 @@ jobs:
 
             - name: Test with pytest
               run: |
-                  pytest --cov-report=xml --color=yes
+                  pytest --cov .
               if: ${{ steps.dependencies.outcome == 'success' && always() }}
             # --------------------------------------------------------------
 
@@ -67,5 +67,7 @@ jobs:
               env:
                   CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
               run: |
-                  bash <(curl -Ls https://coverage.codacy.com/get.sh) report -l Python -r coverage.xml
+                  curl -Os https://uploader.codecov.io/latest/linux/codecov
+                  chmod +x codecov
+                  ./codecov -t ${CODECOV_TOKEN}
               continue-on-error: true
