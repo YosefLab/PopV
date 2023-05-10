@@ -5,7 +5,7 @@ name: PopV
 
 on:
     push:
-        branches: [main]
+        branches: [main, can-refactored]
     pull_request:
         branches: [main]
 
@@ -15,7 +15,7 @@ jobs:
         timeout-minutes: 20
         strategy:
             matrix:
-                python-version: ["3.8", "3.9", "3.10", "3.11"]
+                python-version: ["3.9", "3.10"]
 
         steps:
             - uses: actions/checkout@v2
@@ -36,7 +36,7 @@ jobs:
               id: dependencies
               run: |
                   pip install pytest-cov
-                  pip install .[dev,pymde,autotune]
+                  pip install .[dev]
             # Following checks are independent and are run even if one fails
             - name: Lint with flake8
               run: |
@@ -64,8 +64,5 @@ jobs:
                   codecov
                   pip list
             - name: Codacy upload
-              env:
-                  CODACY_PROJECT_TOKEN: ${{ secrets.CODACY_PROJECT_TOKEN }}
-              run: |
-                  bash <(curl -Ls https://coverage.codacy.com/get.sh) report -l Python -r coverage.xml
+              uses: codecov/codecov-action@v2
               continue-on-error: true
