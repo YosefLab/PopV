@@ -67,7 +67,7 @@ typing-extensions = "4.2.0"
 obonet = "^1.0"
 
 [tool.poetry.extras]
-dev = ["black", "pytest", "flake8", "codecov", "loompy", "jupyter", "nbformat", "nbconvert", "pre-commit", "isort"]
+dev = ["black", "pytest", "pytest-cov", "flake8", "codecov", "loompy", "jupyter", "nbformat", "nbconvert", "pre-commit", "isort"]
 
 [tool.poetry.dev-dependencies]
 
