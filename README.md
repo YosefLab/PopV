@@ -5,7 +5,7 @@
 ![Build Status](https://github.com/yoseflab/popv/workflows/scvi-tools/badge.svg)
 [![Coverage](https://codecov.io/gh/yoseflab/popv/branch/master/graph/badge.svg)](https://codecov.io/gh/YosefLab/popv)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
-[![Downloads](https://pepy.tech/badge/scvi-tools)](https://pepy.tech/project/popv)
+[![Downloads](https://pepy.tech/badge/popv)](https://pepy.tech/project/popv)
 
 # PopV
 
