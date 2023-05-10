@@ -1,8 +1,8 @@
-<img src="https://github.com/yoseflab/popv/PopV_logo.webp?raw=true" width="400" alt="popv">
+<img src="https://github.com/yoseflab/popv/PopV_logo.png" width="400" alt="popv">
 
 [![Stars](https://img.shields.io/github/stars/yoseflab/popv?logo=GitHub&color=yellow)](https://github.com/YosefLab/popv/stargazers)
 [![PyPI](https://img.shields.io/pypi/v/popv.svg)](https://pypi.org/project/popv)
-![Build Status](https://github.com/yoseflab/popv/workflows/scvi-tools/badge.svg)
+![Build Status](https://github.com/yoseflab/popv/workflows/popv/badge.svg)
 [![Coverage](https://codecov.io/gh/yoseflab/popv/branch/master/graph/badge.svg)](https://codecov.io/gh/YosefLab/popv)
 [![Code Style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/python/black)
 [![Downloads](https://pepy.tech/badge/popv)](https://pepy.tech/project/popv)
