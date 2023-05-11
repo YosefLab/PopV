@@ -16,7 +16,7 @@ concurrency:
 jobs:
     test:
         runs-on: ${{ matrix.os }}
-        timeout-minutes: 20
+        timeout-minutes: 40
         defaults:
             run:
                 shell: bash -e {0} # -e to fail on error

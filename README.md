@@ -58,12 +58,10 @@ We suggest using a package manager like conda or mamba to install the package. O
 
 ## Example notebook
 
-We deposited an example notebook in Google Colab:
+We provide an example notebook in Google Colab:
 
 -   [Tutorial demonstrating use of Tabula sapiens as a reference](tabula_sapiens_tutorial.ipynb)
 
 This notebook will guide you through annotating a dataset based on the annotated [Tabula sapiens reference](https://tabula-sapiens-portal.ds.czbiohub.org) and demonstrates how to run annotation on your own query dataset. This notebook requires that all cells are annotated based on a cell ontology. We strongly encourage the use of a common cell ontology, see also [Osumi-Sutherland et al](https://www.nature.com/articles/s41556-021-00787-7). Using a cell ontology is a requirement to run OnClass as a prediction algorithm.
 
-However, for other organisms than human no ontology exists. We therefore allow running PopV without using a cell ontology. A second notebook highlighting using PopV without an existing ontology is currently planned and will be released here.
-
-Memory requirements exceed the free limit in Colab and we recommend a Pro access to run the notebook.
+We allow running PopV without using a cell ontology.
