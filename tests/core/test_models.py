@@ -10,7 +10,7 @@ import popv
 from popv.preprocessing import Process_Query
 
 
-def _get_test_anndata():
+def _get_test_anndata(cl_obo_folder="ontology/"):
     print(os.getcwd())
     save_folder = "popv_test_results/"
     fn = save_folder + "annotated_query.h5ad"
@@ -43,7 +43,7 @@ def _get_test_anndata():
         ref_batch_key=ref_batch_key,
         unknown_celltype_label=unknown_celltype_label,
         save_path_trained_models=save_folder,
-        cl_obo_folder="ontology/",
+        cl_obo_folder=cl_obo_folder,
         prediction_mode="retrain",
         n_samples_per_label=n_samples_per_label,
         compute_embedding=True,
@@ -177,6 +177,21 @@ def test_celltypist():
 def test_annotation():
     """Test Annotation and Plotting pipeline."""
     adata = _get_test_anndata().adata
+    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
+    popv.visualization.agreement_score_bar_plot(adata)
+    popv.visualization.prediction_score_bar_plot(adata)
+    popv.visualization.make_agreement_plots(
+        adata, prediction_keys=adata.uns["prediction_keys"]
+    )
+    popv.visualization.celltype_ratio_bar_plot(adata)
+
+    assert "popv_majority_vote_prediction" in adata.obs.columns
+    assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
+
+
+def test_annotation_no_ontology():
+    """Test Annotation and Plotting pipeline without ontology."""
+    adata = _get_test_anndata(cl_obo_folder=False).adata
     popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
