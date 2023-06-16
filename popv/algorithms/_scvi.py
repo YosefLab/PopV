@@ -4,8 +4,10 @@ from typing import Optional
 
 import numpy as np
 import scanpy as sc
+from pynndescent import PyNNDescentTransformer
 from scvi.model import SCVI
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import make_pipeline
 
 
 class SCVI_POPV:
@@ -39,7 +41,7 @@ class SCVI_POPV:
         model_kwargs
             Dictionary to supply non-default values for SCVI model. Options at scvi.model.SCVI
         classifier_dict
-            Dictionary to supply non-default values for KNN classifier. Options at sklearn.neighbors.KNeighborsClassifier
+            Dictionary to supply non-default values for KNN classifier. n_neighbors and weights supported.
         embedding_dict
             Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
         """
@@ -141,7 +143,15 @@ class SCVI_POPV:
             ref_idx = adata.obs["_dataset"] == "ref"
             train_X = adata[ref_idx].obsm["X_scvi"]
             train_Y = adata[ref_idx].obs[self.labels_key].to_numpy()
-            knn = KNeighborsClassifier(**self.classifier_dict)
+            knn = make_pipeline(
+                PyNNDescentTransformer(
+                    n_neighbors=self.classifier_dict["n_neighbors"],
+                    parallel_batch_queries=True,
+                ),
+                KNeighborsClassifier(
+                    metric="precomputed", weights=self.classifier_dict["weights"]
+                ),
+            )
             knn.fit(train_X, train_Y)
             if adata.uns["_save_path_trained_models"]:
                 pickle.dump(
