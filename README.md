@@ -1,4 +1,3 @@
-
 [![Stars](https://img.shields.io/github/stars/yoseflab/popv?logo=GitHub&color=yellow)](https://github.com/YosefLab/popv/stargazers)
 [![PyPI](https://img.shields.io/pypi/v/popv.svg)](https://pypi.org/project/popv)
 [![PopV](https://github.com/YosefLab/PopV/actions/workflows/test.yml/badge.svg)](https://github.com/YosefLab/PopV/actions/workflows/test.yml)
@@ -18,6 +17,7 @@ Currently implemented algorithms are:
 -   K-nearest neighbor classification after dataset integration with [BBKNN](https://github.com/Teichlab/bbknn)
 -   K-nearest neighbor classification after dataset integration with [SCANORAMA](https://github.com/brianhie/scanorama)
 -   K-nearest neighbor classification after dataset integration with [scVI](https://github.com/scverse/scvi-tools)
+-   K-nearest neighbor classification after dataset integration with [Harmony](https://github.com/lilab-bcb/harmony-pytorch)
 -   Random forest classification
 -   Support vector machine classification
 -   [OnClass](https://github.com/wangshenguiuc/OnClass) cell type classification
@@ -33,7 +33,7 @@ To implement a new method, a class has to have several methods:
 
 We highlight the implementation of a new classifier in a [scaffold](popv/algorithms/_scaffold.py). Adding a new class with those methods will automatically tell PopV to include this class into its classifiers and will use the new classifier as another expert.
 
-All algorithms that allow for pre-training are pre-trained. This excludes by design BBKNN and SCANORAMA as both construct a new embedding space. Pretrained models are stored on (Zenodo)[https://zenodo.org/record/7580707] and are automatically downloaded in the Colab notebook linked below. We encourage pre-training models when implementing new classes.
+All algorithms that allow for pre-training are pre-trained. This excludes by design BBKNN, Harmony and SCANORAMA as all construct a new embedding space. Pretrained models are stored on (Zenodo)[https://zenodo.org/record/7580707] and are automatically downloaded in the Colab notebook linked below. We encourage pre-training models when implementing new classes.
 
 All input parameters are defined during initial call to [Process_Query](popv/preprocessing.py) and are stored in the unstructured field of the generated AnnData object. PopV has three levels of prediction complexities:
 
