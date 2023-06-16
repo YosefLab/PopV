@@ -43,6 +43,7 @@ def _get_test_anndata():
         ref_batch_key=ref_batch_key,
         unknown_celltype_label=unknown_celltype_label,
         save_path_trained_models=save_folder,
+        cl_obo_folder="ontology/",
         prediction_mode="retrain",
         n_samples_per_label=n_samples_per_label,
         compute_embedding=True,
