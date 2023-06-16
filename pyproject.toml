@@ -22,7 +22,7 @@ description = "Automatic annotation of single cell data using a labelled referen
 packages = [
   {include = "popv"},
 ]
-version = "0.2.2"
+version = "0.3.0"
 readme = "README.md"
 
 [tool.poetry.dependencies]

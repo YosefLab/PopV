@@ -4,12 +4,14 @@ from os.path import exists
 import anndata
 import numpy as np
 import scanpy as sc
+import os
 
 import popv
 from popv.preprocessing import Process_Query
 
 
 def _get_test_anndata():
+    print(os.getcwd())
     save_folder = "popv_test_results/"
     fn = save_folder + "annotated_query.h5ad"
     if exists(save_folder + fn):
@@ -102,6 +104,19 @@ def test_scanorama():
 
     assert "popv_knn_on_scanorama_prediction" in adata.obs.columns
     assert not adata.obs["popv_knn_on_scanorama_prediction"].isnull().any()
+
+
+def test_harmony():
+    """Test Harmony algorithm."""
+    adata = _get_test_anndata().adata
+    current_method = popv.algorithms.knn_on_harmony()
+
+    current_method.compute_integration(adata)
+    current_method.predict(adata)
+    current_method.compute_embedding(adata)
+
+    assert "popv_knn_on_harmony_prediction" in adata.obs.columns
+    assert not adata.obs["popv_knn_on_harmony_prediction"].isnull().any()
 
 
 def test_scanvi():
