@@ -1,28 +1,27 @@
 import logging
 from typing import Optional
 
-import anndata
 import numpy as np
-import scanorama
 import scanpy as sc
+from harmony import harmonize
 from pynndescent import PyNNDescentTransformer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
 
 
-class SCANORAMA:
+class HARMONY:
     def __init__(
         self,
         batch_key: Optional[str] = "_batch_annotation",
         labels_key: Optional[str] = "_labels_annotation",
-        result_key: Optional[str] = "popv_knn_on_scanorama_prediction",
-        embedding_key: Optional[str] = "X_umap_scanorma_popv",
+        result_key: Optional[str] = "popv_knn_on_harmony_prediction",
+        embedding_key: Optional[str] = "X_umap_harmony_popv",
         method_dict: Optional[dict] = {},
         classifier_dict: Optional[dict] = {},
         embedding_dict: Optional[dict] = {},
     ) -> None:
         """
-        Class to compute KNN classifier after BBKNN integration.
+        Class to compute KNN classifier after Harmony integration.
 
         Parameters
         ----------
@@ -35,7 +34,7 @@ class SCANORAMA:
         embedding_key
             Key in obsm in which UMAP embedding of integrated data is stored.
         method_dict
-            Additional parameters for SCANORAMA. Options at scanorama.integrate_scanpy
+            Additional parameters for HARMONY. Options at harmony.integrate_scanpy
         classifier_dict
             Dictionary to supply non-default values for KNN classifier. n_neighbors and weights supported.
         embedding_dict
@@ -57,21 +56,17 @@ class SCANORAMA:
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
-        logging.info("Integrating data with scanorama")
+        logging.info("Integrating data with harmony")
 
-        _adatas = [
-            adata[adata.obs[self.batch_key] == i]
-            for i in np.unique(adata.obs[self.batch_key])
-        ]
-        scanorama.integrate_scanpy(_adatas, **self.method_dict)
-        tmp_adata = anndata.concat(_adatas)
-        adata.obsm["X_scanorama"] = tmp_adata[adata.obs_names].obsm["X_scanorama"]
+        adata.obsm["X_pca_harmony"] = harmonize(
+            adata.obsm["X_pca"], adata.obs, batch_key=self.batch_key
+        )
 
-    def predict(self, adata, result_key="popv_knn_on_scanorama_prediction"):
-        logging.info(f'Saving knn on scanorama results to adata.obs["{result_key}"]')
+    def predict(self, adata, result_key="popv_knn_on_harmony_prediction"):
+        logging.info(f'Saving knn on harmony results to adata.obs["{result_key}"]')
 
         ref_idx = adata.obs["_dataset"] == "ref"
-        train_X = adata[ref_idx].obsm["X_scanorama"]
+        train_X = adata[ref_idx].obsm["X_pca_harmony"]
         train_Y = adata[ref_idx].obs[self.labels_key].to_numpy()
 
         knn = make_pipeline(
@@ -85,22 +80,22 @@ class SCANORAMA:
         )
 
         knn.fit(train_X, train_Y)
-        knn_pred = knn.predict(adata.obsm["X_scanorama"])
+        knn_pred = knn.predict(adata.obsm["X_pca_harmony"])
 
         # save_results
         adata.obs[result_key] = knn_pred
 
         if adata.uns["_return_probabilities"]:
             adata.obs[self.result_key + "_probabilities"] = np.max(
-                knn.predict_proba(adata.obsm["X_scanorama"]), axis=1
+                knn.predict_proba(adata.obsm["X_pca_harmony"]), axis=1
             )
 
     def compute_embedding(self, adata):
         if adata.uns["_compute_embedding"]:
             logging.info(
-                f'Saving UMAP of scanorama results to adata.obs["{self.embedding_key}"]'
+                f'Saving UMAP of harmony results to adata.obs["{self.embedding_key}"]'
             )
-            sc.pp.neighbors(adata, use_rep="X_scanorama")
+            sc.pp.neighbors(adata, use_rep="X_pca_harmony")
             adata.obsm[self.embedding_key] = sc.tl.umap(
                 adata, copy=True, **self.embedding_dict
             ).obsm["X_umap"]
