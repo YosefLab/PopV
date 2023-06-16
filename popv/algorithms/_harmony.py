@@ -1,13 +1,11 @@
 import logging
 from typing import Optional
 
-import anndata
 import numpy as np
-import scanorama
 import scanpy as sc
 from pynndescent import PyNNDescentTransformer
-from sklearn.pipeline import make_pipeline
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import make_pipeline
 
 
 class HARMONY:
@@ -69,8 +67,13 @@ class HARMONY:
         train_Y = adata[ref_idx].obs[self.labels_key].to_numpy()
 
         knn = make_pipeline(
-            PyNNDescentTransformer(n_neighbors=self.classifier_dict['n_neighbors'], parallel_batch_queries=True),
-            KNeighborsClassifier(metric='precomputed', weights=self.classifier_dict['weights'])
+            PyNNDescentTransformer(
+                n_neighbors=self.classifier_dict["n_neighbors"],
+                parallel_batch_queries=True,
+            ),
+            KNeighborsClassifier(
+                metric="precomputed", weights=self.classifier_dict["weights"]
+            ),
         )
 
         knn.fit(train_X, train_Y)

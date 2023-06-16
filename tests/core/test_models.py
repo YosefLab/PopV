@@ -1,10 +1,10 @@
 """Test various algorithms implemented in PopV."""
+import os
 from os.path import exists
 
 import anndata
 import numpy as np
 import scanpy as sc
-import os
 
 import popv
 from popv.preprocessing import Process_Query
