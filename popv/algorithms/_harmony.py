@@ -3,6 +3,7 @@ from typing import Optional
 
 import numpy as np
 import scanpy as sc
+from harmony import harmonize
 from pynndescent import PyNNDescentTransformer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
@@ -57,7 +58,9 @@ class HARMONY:
     def compute_integration(self, adata):
         logging.info("Integrating data with harmony")
 
-        sc.external.pp.harmony_integrate(adata, key=self.batch_key)
+        adata.obsm["X_pca_harmony"] = harmonize(
+            adata.obsm["X_pca"], adata.obs, batch_key=self.batch_key
+        )
 
     def predict(self, adata, result_key="popv_knn_on_harmony_prediction"):
         logging.info(f'Saving knn on harmony results to adata.obs["{result_key}"]')

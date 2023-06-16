@@ -1586,6 +1586,25 @@ files = [
 numpy = ">=1.14.5"
 
 [[package]]
+name = "harmony-pytorch"
+version = "0.1.7"
+description = "Pytorch implementation of Harmony algorithm on single-cell sequencing data integration"
+optional = false
+python-versions = "~=3.5"
+files = [
+    {file = "harmony-pytorch-0.1.7.tar.gz", hash = "sha256:90b6d6d7a9ae0a20584840828cff415d503be5449a7328b0c76fc45ed3f8c4df"},
+    {file = "harmony_pytorch-0.1.7-py3-none-any.whl", hash = "sha256:9b1f0baf6b59f197f7ae35d2f7cb0f4e94bba61d20d4d6983727080debc81e4b"},
+]
+
+[package.dependencies]
+numpy = "*"
+pandas = "*"
+psutil = "*"
+scikit-learn = ">=0.23"
+threadpoolctl = "*"
+torch = "*"
+
+[[package]]
 name = "huggingface-hub"
 version = "0.11.1"
 description = "Client library to download and publish models, datasets and other repos on the huggingface.co hub"
@@ -2731,8 +2750,8 @@ files = [
 [package.dependencies]
 numpy = [
     {version = ">1.20", markers = "python_version <= \"3.9\""},
-    {version = ">=1.23.3", markers = "python_version > \"3.10\""},
     {version = ">=1.21.2", markers = "python_version > \"3.9\""},
+    {version = ">=1.23.3", markers = "python_version > \"3.10\""},
 ]
 
 [package.extras]
@@ -6133,4 +6152,4 @@ dev = ["black", "flake8", "isort", "jupyter", "nbconvert", "nbformat", "pre-comm
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "7c277e6ec35f4dd96cdecd4d713fa62efbc8d69f0fa57a7b9df8071b22a4c8fd"
+content-hash = "a2f269667cc9f5c2d5545e4ec0dfb96b96b606f5fd036caaea7574eacf7c5c1e"
