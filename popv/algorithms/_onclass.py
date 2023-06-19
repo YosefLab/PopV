@@ -86,11 +86,15 @@ class ONCLASS:
             Default will be <labels_key>_cell_ontology_id
         """
         ontology_id = []
+        single_warning = []  # print a single warning per missing cell-type
 
         for label in adata.obs[self.labels_key]:
             if label != adata.uns["unknown_celltype_label"]:
                 if label not in celltype_dict:
-                    logging.warning("Following label not in celltype_dict ", label)
+                    if label not in single_warning:
+                        logging.warning("Following label not in celltype_dict ", label)
+                        single_warning.append(label)
+                    ontology_id.append("unknown")
                 ontology_id.append(celltype_dict[label])
             else:
                 ontology_id.append("unknown")
