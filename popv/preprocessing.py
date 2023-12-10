@@ -13,6 +13,7 @@ from popv import _utils
 
 
 class Process_Query:
+    'Class to preprocess AnnData for PopV.'
     def __init__(
         self,
         query_adata: anndata.AnnData,
@@ -204,7 +205,7 @@ class Process_Query:
             except FileNotFoundError:
                 raise FileNotFoundError(
                     f"{self.cl_obo_file} doesn't exist. Check that folder exists."
-                )
+                ) from FileNotFoundError
 
         self.check_validity_anndata(self.query_adata, "query")
         self.setup_dataset(self.query_adata, "query", add_meta="_query")
