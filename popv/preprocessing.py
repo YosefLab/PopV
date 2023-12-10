@@ -207,20 +207,20 @@ class Process_Query:
                     f"{self.cl_obo_file} doesn't exist. Check that folder exists."
                 ) from FileNotFoundError
 
-        self.check_validity_anndata(self.query_adata, "query")
-        self.setup_dataset(self.query_adata, "query", add_meta="_query")
+        self._check_validity_anndata(self.query_adata, "query")
+        self._setup_dataset(self.query_adata, "query", add_meta="_query")
 
         if self.prediction_mode != "fast":
             if self.genes:
                 self.ref_adata = ref_adata[:, self.genes].copy()
             else:
                 self.ref_adata = ref_adata.copy()
-            self.setup_dataset(self.ref_adata, "reference")
-            self.check_validity_anndata(self.ref_adata, "reference")
+            self._setup_dataset(self.ref_adata, "reference")
+            self._check_validity_anndata(self.ref_adata, "reference")
 
-        self.preprocess()
+        self._preprocess()
 
-    def check_validity_anndata(self, adata, input_type):
+    def _check_validity_anndata(self, adata, input_type):
         assert check_nonnegative_integers(
             adata.X
         ), f"Make sure input {input_type} adata contains raw_counts"
@@ -230,7 +230,7 @@ class Process_Query:
         assert adata.n_obs > 0, f"{input_type} anndata has no cells."
         assert adata.n_vars > 0, f"{input_type} anndata has no genes."
 
-    def setup_dataset(self, adata, key, add_meta=""):
+    def _setup_dataset(self, adata, key, add_meta=""):
         if isinstance(self.batch_key[key], list):
             adata.obs["_batch_annotation"] = (
                 adata.obs[self.batch_key[key]].astype(str).sum(1).astype("category")
@@ -268,7 +268,7 @@ class Process_Query:
         else:
             adata.obs["_ref_subsample"] = False
 
-    def preprocess(self):
+    def _preprocess(self):
         if self.genes is None:
             self.ref_adata = self.ref_adata[
                 :, np.intersect1d(self.ref_adata.var_names, self.query_adata.var_names)

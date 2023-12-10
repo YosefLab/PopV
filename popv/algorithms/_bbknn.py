@@ -13,7 +13,7 @@ class BBKNN:
         labels_key: str | None = "_labels_annotation",
         result_key: str | None = "popv_knn_on_bbknn_prediction",
         embedding_key: str | None = "X_bbknn_umap_popv",
-        #method_dict: dict | None = None,
+        method_dict: dict | None = None,
         classifier_dict: dict | None = None,
         embedding_dict: dict | None = None,
     ) -> None:
