@@ -18,9 +18,9 @@ from popv import _utils, algorithms
 
 def annotate_data(
     adata: anndata.AnnData,
-    methods: Optional[list] = None,
-    save_path: Optional[str] = None,
-    methods_kwargs: Optional[dict] = None,
+    methods: list | None = None,
+    save_path: str | None = None,
+    methods_kwargs: dict | None = None,
 ) -> None:
     """
     Annotate an AnnData dataset preprocessed by preprocessing.Process_Query by using the annotation pipeline.
@@ -127,7 +127,7 @@ def compute_consensus(adata: anndata.AnnData, prediction_keys: list) -> None:
 def ontology_vote_onclass(
     adata: anndata.AnnData,
     prediction_keys: list,
-    save_key: Optional[str] = "popv_prediction",
+    save_key: str | None = "popv_prediction",
 ):
     """
     Compute prediction using ontology aggregation method.

@@ -13,13 +13,13 @@ from sklearn.pipeline import make_pipeline
 class SCANORAMA:
     def __init__(
         self,
-        batch_key: Optional[str] = "_batch_annotation",
-        labels_key: Optional[str] = "_labels_annotation",
-        result_key: Optional[str] = "popv_knn_on_scanorama_prediction",
-        embedding_key: Optional[str] = "X_umap_scanorma_popv",
-        method_dict: Optional[dict] = {},
-        classifier_dict: Optional[dict] = {},
-        embedding_dict: Optional[dict] = {},
+        batch_key: str | None = "_batch_annotation",
+        labels_key: str | None = "_labels_annotation",
+        result_key: str | None = "popv_knn_on_scanorama_prediction",
+        embedding_key: str | None = "X_umap_scanorma_popv",
+        method_dict: dict | None = None,
+        classifier_dict: dict | None = None,
+        embedding_dict: dict | None = None,
     ) -> None:
         """
         Class to compute KNN classifier after BBKNN integration.

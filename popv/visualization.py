@@ -89,9 +89,9 @@ def _sample_report(adata, cell_type_key, score_key, pred_keys):
 
 def agreement_score_bar_plot(
     adata,
-    popv_prediction_key: Optional[str] = "popv_prediction",
-    consensus_score_key: Optional[str] = "popv_prediction_score",
-    save_folder: Optional[str] = None,
+    popv_prediction_key: str | None = "popv_prediction",
+    consensus_score_key: str | None = "popv_prediction_score",
+    save_folder: str | None = None,
 ):
     """
     Create bar-plot of prediction scores in query cells after running popv.
@@ -142,8 +142,8 @@ def agreement_score_bar_plot(
 
 def prediction_score_bar_plot(
     adata,
-    popv_prediction_score: Optional[str] = "popv_prediction_score",
-    save_folder: Optional[str] = None,
+    popv_prediction_score: str | None = "popv_prediction_score",
+    save_folder: str | None = None,
 ):
     """
     Create bar-plot of prediction scores in query cells after running popv.
@@ -181,8 +181,8 @@ def prediction_score_bar_plot(
 
 def celltype_ratio_bar_plot(
     adata,
-    popv_prediction: Optional[str] = "popv_prediction",
-    save_folder: Optional[str] = None,
+    popv_prediction: str | None = "popv_prediction",
+    save_folder: str | None = None,
 ):
     """
     Create bar-plot of celltype rations in query as well as reference cells after running popv.
@@ -223,8 +223,8 @@ def celltype_ratio_bar_plot(
 def make_agreement_plots(
     adata,
     prediction_keys: list,
-    popv_prediction_key: Optional[str] = "popv_prediction",
-    save_folder: Optional[str] = None,
+    popv_prediction_key: str | None = "popv_prediction",
+    save_folder: str | None = None,
 ):
     """
     Create plot of confusion matrix for different popv methods and consensus prediction.

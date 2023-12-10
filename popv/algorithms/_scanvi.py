@@ -10,16 +10,16 @@ import torch
 class SCANVI_POPV:
     def __init__(
         self,
-        batch_key: Optional[str] = "_batch_annotation",
-        labels_key: Optional[str] = "_labels_annotation",
-        n_epochs_unsupervised: Optional[int] = None,
-        n_epochs_semisupervised: Optional[int] = None,
-        save_folder: Optional[str] = None,
-        result_key: Optional[str] = "popv_scanvi_prediction",
-        embedding_key: Optional[str] = "X_scanvi_umap_popv",
-        model_kwargs: Optional[dict] = {},
-        classifier_kwargs: Optional[dict] = {},
-        embedding_dict: Optional[dict] = {},
+        batch_key: str | None = "_batch_annotation",
+        labels_key: str | None = "_labels_annotation",
+        n_epochs_unsupervised: int | None = None,
+        n_epochs_semisupervised: int | None = None,
+        save_folder: str | None = None,
+        result_key: str | None = "popv_scanvi_prediction",
+        embedding_key: str | None = "X_scanvi_umap_popv",
+        model_kwargs: dict | None = None,
+        classifier_kwargs: dict | None = None,
+        embedding_dict: dict | None = None,
     ) -> None:
         """
         Class to compute classifier in scANVI model and predict labels.

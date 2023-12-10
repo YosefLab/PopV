@@ -10,13 +10,13 @@ from OnClass.OnClassModel import OnClassModel
 class ONCLASS:
     def __init__(
         self,
-        batch_key: Optional[str] = "_batch_annotation",
-        labels_key: Optional[str] = "_labels_annotation",
-        layers_key: Optional[str] = None,
-        max_iter: Optional[int] = 30,
-        cell_ontology_obs_key: Optional[str] = None,
-        result_key: Optional[str] = "popv_onclass_prediction",
-        seen_result_key: Optional[str] = "popv_onclass_seen",
+        batch_key: str | None = "_batch_annotation",
+        labels_key: str | None = "_labels_annotation",
+        layers_key: str | None = None,
+        max_iter: Optionalint] = 30,
+        cell_ontology_obs_key: str | None = None,
+        result_key: str | None = "popv_onclass_prediction",
+        seen_result_key: str | None = "popv_onclass_seen",
     ) -> None:
         """
         Class to compute KNN classifier after BBKNN integration.

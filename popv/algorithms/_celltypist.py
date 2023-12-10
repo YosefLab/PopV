@@ -7,11 +7,11 @@ import celltypist
 class CELLTYPIST:
     def __init__(
         self,
-        batch_key: Optional[str] = "_batch_annotation",
-        labels_key: Optional[str] = "_labels_annotation",
-        result_key: Optional[str] = "popv_celltypist_prediction",
-        method_dict: Optional[dict] = {},
-        classifier_dict: Optional[dict] = {},
+        batch_key: str | None = "_batch_annotation",
+        labels_key: str | None  = "_labels_annotation",
+        result_key: str | None  = "popv_celltypist_prediction",
+        method_dict: dict | None  = None,
+        classifier_dict: dict | None = None,
     ) -> None:
         """
         Class to compute KNN classifier after BBKNN integration.

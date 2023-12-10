@@ -13,15 +13,15 @@ from sklearn.pipeline import make_pipeline
 class SCVI_POPV:
     def __init__(
         self,
-        batch_key: Optional[str] = "_batch_annotation",
-        labels_key: Optional[str] = "_labels_annotation",
-        max_epochs: Optional[int] = None,
-        save_folder: Optional[str] = None,
-        result_key: Optional[str] = "popv_knn_on_scvi_prediction",
-        embedding_key: Optional[str] = "X_scvi_umap_popv",
-        model_kwargs: Optional[dict] = {},
-        classifier_dict: Optional[dict] = {},
-        embedding_dict: Optional[dict] = {},
+        batch_key: str | None = "_batch_annotation",
+        labels_key: str | None = "_labels_annotation",
+        max_epochs: int | None = None,
+        save_folder: str | None = None,
+        result_key: str | None = "popv_knn_on_scvi_prediction",
+        embedding_key: str | None = "X_scvi_umap_popv",
+        model_kwargs: dict | None = None,
+        classifier_dict: dict | None = None,
+        embedding_dict: dict | None = None,
     ) -> None:
         """
         Class to compute KNN classifier after scVI integration.

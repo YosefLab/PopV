@@ -10,11 +10,11 @@ from sklearn.ensemble import RandomForestClassifier
 class RF:
     def __init__(
         self,
-        batch_key: Optional[str] = "_batch_annotation",
-        labels_key: Optional[str] = "_labels_annotation",
-        layers_key: Optional[str] = None,
-        result_key: Optional[str] = "popv_rf_prediction",
-        classifier_dict: Optional[str] = {},
+        batch_key: str | None = "_batch_annotation",
+        labels_key: str | None = "_labels_annotation",
+        layers_key: str | None = None,
+        result_key: str | None = "popv_rf_prediction",
+        classifier_dict: str | None = {},
     ) -> None:
         """
         Class to compute KNN classifier after BBKNN integration.
