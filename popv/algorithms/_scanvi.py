@@ -14,7 +14,6 @@ class SCANVI_POPV:
         labels_key: Optional[str] = "_labels_annotation",
         n_epochs_unsupervised: Optional[int] = None,
         n_epochs_semisupervised: Optional[int] = None,
-        use_gpu: Optional[bool] = False,
         save_folder: Optional[str] = None,
         result_key: Optional[str] = "popv_scanvi_prediction",
         embedding_key: Optional[str] = "X_scanvi_umap_popv",
@@ -35,8 +34,6 @@ class SCANVI_POPV:
             Number of epochs scvi is trained in unsupervised mode.
         n_epochs_semisupervised
             Number of epochs scvi is trained in semisupervised mode.
-        use_gpu
-            Whether gpu is used for training.
         result_key
             Key in obs in which celltype annotation results are stored.
         embedding_key
@@ -57,7 +54,6 @@ class SCANVI_POPV:
 
         self.n_epochs_unsupervised = n_epochs_unsupervised
         self.n_epochs_semisupervised = n_epochs_semisupervised
-        self.use_gpu = use_gpu
         self.save_folder = save_folder
 
         self.model_kwargs = {
@@ -122,7 +118,8 @@ class SCANVI_POPV:
                 scvi_model.train(
                     train_size=1.0,
                     max_epochs=self.n_epochs_unsupervised,
-                    use_gpu=adata.uns["_use_gpu"],
+                    accelerator=adata.uns["_accelerator"],
+                    devices=adata.uns["_devices"],
                     plan_kwargs={"n_epochs_kl_warmup": 20},
                 )
 
@@ -148,7 +145,8 @@ class SCANVI_POPV:
                 batch_size=512,
                 n_samples_per_label=20,
                 train_size=1.0,
-                use_gpu=adata.uns["_use_gpu"],
+                accelerator=adata.uns["_accelerator"],
+                devices=adata.uns["_devices"],
                 plan_kwargs={"n_steps_kl_warmup": 1},
             )
         else:
@@ -159,7 +157,8 @@ class SCANVI_POPV:
                 batch_size=512,
                 n_samples_per_label=20,
                 train_size=1.0,
-                use_gpu=adata.uns["_use_gpu"],
+                accelerator=adata.uns["_accelerator"],
+                devices=adata.uns["_devices"],
                 plan_kwargs={"n_epochs_kl_warmup": 20},
             )
         if adata.uns["_prediction_mode"] == "retrain":

@@ -48,7 +48,8 @@ def _get_test_anndata(cl_obo_folder="ontology/"):
         n_samples_per_label=n_samples_per_label,
         compute_embedding=True,
         return_probabilities=True,
-        use_gpu=False,
+        accelerator="cpu",
+        devices=None,
         hvg=4000,
     )
 

@@ -29,7 +29,8 @@ class Process_Query:
         pretrained_scvi_path: Optional[str] = None,
         save_path_trained_models: Optional[str] = "tmp/",
         hvg: Optional[int] = 4000,
-        use_gpu: Optional[bool] = True,
+        accelerator: Optional[str] = "cuda",
+        devices: Optional[Union[int, str]] = "auto",
         compute_embedding: Optional[bool] = True,
         return_probabilities: Optional[bool] = True,
     ) -> None:
@@ -79,8 +80,10 @@ class Process_Query:
             If mode=='retrain' saves models to this directory. Otherwise trained models are expected in this folder.
         hvg
             If Int, subsets data to n highly variable genes according to `sc.pp.highly_variable_genes`
-        use_gpu
-            If gpu is used to train scVI and scANVI model
+        accelerator
+            If using GPU, set accelerator to "cuda". If using CPU, set accelerator to "cpu".
+        devices
+            If using GPU, set devices to the GPU number. If using CPU, set devices to number of CPUs.
         compute_embedding
             Whether UMAP is computed for all integration methods (BBKNN, SCANORAMA, SCANVI, SCVI)
         return_probabilities
@@ -153,7 +156,8 @@ class Process_Query:
 
         self.validity_checked = False
         self.hvg = hvg
-        self.use_gpu = use_gpu
+        self.accelerator = accelerator
+        self.devices = devices
         if self.prediction_mode == "fast":
             self.n_samples_per_label = None
         else:
@@ -372,7 +376,8 @@ class Process_Query:
         self.adata.uns["_cl_obo_file"] = self.cl_obo_file
         self.adata.uns["_cl_ontology_file"] = self.cl_ontology_file
         self.adata.uns["_nlp_emb_file"] = self.nlp_emb_file
-        self.adata.uns["_use_gpu"] = self.use_gpu
+        self.adata.uns["_accelerator"] = self.accelerator
+        self.adata.uns["_devices"] = self.devices
         self.adata.uns["_compute_embedding"] = self.compute_embedding
         self.adata.uns["_return_probabilities"] = self.return_probabilities
         self.adata.uns["prediction_keys"] = []

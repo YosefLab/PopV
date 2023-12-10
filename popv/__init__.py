@@ -2,14 +2,11 @@
 
 # Set default logging handler to avoid logging with logging.lastResort logger.
 import logging
+
 import scanpy as sc
 
+from . import algorithms, annotation, preprocessing, visualization
 from ._settings import Config
-
-from . import algorithms
-from . import annotation
-from . import preprocessing
-from . import visualization
 
 try:
     import importlib.metadata as importlib_metadata

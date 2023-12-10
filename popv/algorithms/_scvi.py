@@ -107,7 +107,8 @@ class SCVI_POPV:
             model.train(
                 max_epochs=self.max_epochs,
                 train_size=0.9,
-                use_gpu=adata.uns["_use_gpu"],
+                accelerator=adata.uns["_accelerator"],
+                devices=adata.uns["_devices"],
                 plan_kwargs={"n_steps_kl_warmup": 1},
             )
         else:
@@ -116,7 +117,8 @@ class SCVI_POPV:
             model.train(
                 max_epochs=round(self.max_epochs),
                 train_size=0.9,
-                use_gpu=adata.uns["_use_gpu"],
+                accelerator=adata.uns["_accelerator"],
+                devices=adata.uns["_devices"],
                 plan_kwargs={"n_epochs_kl_warmup": min(20, self.max_epochs)},
             )
 
@@ -169,6 +171,8 @@ class SCVI_POPV:
                     "rb",
                 )
             )
+
+        knn = pickle.load(open("tmp/pretrained_model_Lung/scvi_knn_classifier.pkl", "rb"))
 
         knn_pred = knn.predict(adata.obsm["X_scvi"])
 

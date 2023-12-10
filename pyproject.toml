@@ -26,8 +26,9 @@ version = "0.3.2"
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.12"
+python = ">=3.9,<3.12"
 anndata = "^0.8"
+pandas = "<2.0.0"
 bbknn = "^1.5.1"
 black = {version = ">=22.3", optional = true}
 celltypist = "^1.3.0"
@@ -35,7 +36,7 @@ flake8 = {version = ">=3.7.7", optional = true}
 gdown = "^4.6.0"
 grpcio = "^1.51.1"
 h5py = "^3.7.0"
-huggingface-hub = "0.11.1"
+huggingface-hub = ">=0.11.1"
 imgkit = "1.2.2"
 importlib-metadata = "4.2.0"
 ipython = {version = ">=7.20", optional = true, python = ">=3.7"}
@@ -47,18 +48,18 @@ nbconvert = {version = ">=5.4.0", optional = true}
 nbformat = {version = ">=4.4.0", optional = true}
 nbsphinx = {version = "*", optional = true}
 nbsphinx-link = {version = "*", optional = true}
-onclass = "^1.2"
+onclass = "^1.3"
 pandas = ">=1.4,<2.0"
 pre-commit = {version = ">=2.7.1", optional = true}
 pytest = {version = ">=4.4", optional = true}
 rich = ">=9.1.0"
 scanorama = "^1.7.3"
 scanpy = "^1.9.1"
-scikit-learn = ">0.21.2,<1.0"
+scikit-learn = ">0.21.2,<1.2"
 scikit-misc = ">=0.1"
-scvi-tools = ">=0.20.0"
+scvi-tools = ">1.0.0"
 six = "1.15.0"
-tensorflow = "^2.11.0"
+tensorflow = "^2.15.0"
 tqdm = "4.64.0"
 transformers = "^4.25.1"
 typing-extensions = "4.2.0"
