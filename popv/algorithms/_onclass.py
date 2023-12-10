@@ -13,7 +13,7 @@ class ONCLASS:
         batch_key: str | None = "_batch_annotation",
         labels_key: str | None = "_labels_annotation",
         layers_key: str | None = None,
-        max_iter: Optionalint] = 30,
+        max_iter: int | None = 30,
         cell_ontology_obs_key: str | None = None,
         result_key: str | None = "popv_onclass_prediction",
         seen_result_key: str | None = "popv_onclass_seen",
