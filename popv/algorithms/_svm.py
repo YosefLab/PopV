@@ -1,7 +1,5 @@
 import logging
 import pickle
-from ast import Pass
-from typing import Optional
 
 import numpy as np
 from sklearn import svm
@@ -33,7 +31,6 @@ class SVM:
         classifier_dict
             Dictionary to supply non-default values for SVM classifier. Options at sklearn.svm.
         """
-
         self.batch_key = batch_key
         self.labels_key = labels_key
         self.layers_key = layers_key
@@ -44,26 +41,19 @@ class SVM:
             "max_iter": 5000,
             "class_weight": "balanced",
         }
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
     def compute_integration(self, adata):
-        Pass
+        pass
 
     def predict(self, adata):
-        logging.info(
-            'Computing support vector machine. Storing prediction in adata.obs["{}"]'.format(
-                self.result_key
-            )
-        )
+        logging.info(f'Computing support vector machine. Storing prediction in adata.obs["{self.result_key}"]')
         test_x = adata.layers[self.layers_key] if self.layers_key else adata.X
 
         if adata.uns["_prediction_mode"] == "retrain":
             train_idx = adata.obs["_ref_subsample"]
-            train_x = (
-                adata[train_idx].layers[self.layers_key]
-                if self.layers_key
-                else adata[train_idx].X
-            )
+            train_x = adata[train_idx].layers[self.layers_key] if self.layers_key else adata[train_idx].X
             train_y = adata[train_idx].obs[self.labels_key].to_numpy()
             clf = CalibratedClassifierCV(svm.LinearSVC(**self.classifier_dict))
             clf.fit(train_x, train_y)
@@ -76,18 +66,12 @@ class SVM:
                     ),
                 )
         else:
-            clf = pickle.load(
-                open(
-                    adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"
-                )
-            )
+            clf = pickle.load(open(adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"))
 
         adata.obs[self.result_key] = clf.predict(test_x)
 
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + "_probabilities"] = np.max(
-                clf.predict_proba(test_x), axis=1
-            )
+            adata.obs[self.result_key + "_probabilities"] = np.max(clf.predict_proba(test_x), axis=1)
 
         adata.obs[self.result_key]
 

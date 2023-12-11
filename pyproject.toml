@@ -1,98 +1,67 @@
-[tool.isort]
-include_trailing_comma = true
-multi_line_output = 3
-profile = "black"
-skip_glob = ["popv/__init__.py"]
-
-[tool.poetry]
-name = "popv"
-authors = ["Galen Xing", "Alexander Tarashansky <alexander.tarashansky@czbiohub.org>", "Can Ergen <canergen.ac@gmail.com>"]
-license = "BSD-3-Clause"
-classifiers = [
-  "Development Status :: 4 - Beta",
-  "Intended Audience :: Science/Research",
-  "Natural Language :: English",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-]
-
-description = "Automatic annotation of single cell data using a labelled reference dataset including various methods and giving certainty across those methods."
-packages = [
-  {include = "popv"},
-]
-version = "0.3.2"
-readme = "README.md"
-
-[tool.poetry.dependencies]
-python = ">=3.9,<3.12"
-anndata = "^0.8"
-pandas = "<2.0.0"
-bbknn = "^1.5.1"
-black = {version = ">=22.3", optional = true}
-celltypist = "^1.3.0"
-flake8 = {version = ">=3.7.7", optional = true}
-gdown = "^4.6.0"
-grpcio = "^1.51.1"
-h5py = "^3.7.0"
-huggingface-hub = ">=0.11.1"
-imgkit = "1.2.2"
-importlib-metadata = "4.2.0"
-ipython = {version = ">=7.20", optional = true, python = ">=3.7"}
-ipywidgets = "*"
-isort = {version = ">=5.7", optional = true}
-jupyter = {version = ">=1.0", optional = true}
-Markdown = "3.3.4"
-nbconvert = {version = ">=5.4.0", optional = true}
-nbformat = {version = ">=4.4.0", optional = true}
-nbsphinx = {version = "*", optional = true}
-nbsphinx-link = {version = "*", optional = true}
-onclass = "^1.3"
-pandas = ">=1.4,<2.0"
-pre-commit = {version = ">=2.7.1", optional = true}
-pytest = {version = ">=4.4", optional = true}
-rich = ">=9.1.0"
-scanorama = "^1.7.3"
-scanpy = "^1.9.1"
-scikit-learn = ">0.21.2,<1.2"
-scikit-misc = ">=0.1"
-scvi-tools = ">1.0.0"
-six = "1.15.0"
-tensorflow = "^2.15.0"
-tqdm = "4.64.0"
-transformers = "^4.25.1"
-typing-extensions = "4.2.0"
-obonet = "^1.0"
-jaxlib = "0.4.10"
-jax = "0.4.10"
-harmony-pytorch = "^0.1.7"
-
-[tool.poetry.extras]
-dev = ["black", "pytest", "pytest-cov", "flake8", "loompy", "jupyter", "nbformat", "nbconvert", "pre-commit", "isort"]
-
-[tool.poetry.dev-dependencies]
-
-[tool.tox]
-legacy_tox_ini = """
-[tox]
-envlist = py37
-
-[testenv]
-deps = pytest
-extras =
-    dev
-commands = pytest {posargs}
-"""
 [build-system]
-build-backend = "poetry.masonry.api"
-requires = [
-  "poetry>=1.0",
-  "setuptools", # keep it here or "pip install -e" would fail
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[project]
+name = "PopV"
+version = "0.0.1"
+description = "Consensus prediction of cell type labels with popV"
+readme = "README.md"
+requires-python = ">=3.9"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Can Ergen"},
+]
+maintainers = [
+    {name = "Can Ergen", email = "canergen.ac@gmail.com"},
+]
+urls.Documentation = "https://PopV.readthedocs.io/"
+urls.Source = "https://github.com/YosefLab/PopV.git"
+urls.Home-page = "https://github.com/YosefLab/PopV.git"
+
+dependencies = [
+    "anndata>0.8.0",
+    "pandas<2.0.0,>=1.4.0",
+    "bbknn>1.5.0",
+    "celltypist>1.3.0",
+    "gdown>4.6.0",
+    "h5py>3.7.0",
+    "huggingface-hub>=0.11.1",
+    "onclass>=1.3",
+    "scanorama>1.7.2",
+    "scanpy>1.9.0",
+    "scikit-learn>0.21.2,<1.2",
+    "scikit-misc>=0.1",
+    "scvi-tools>1.0.0",
+    "tensorflow>2.15.0",
+    "transformers>4.25.0",
+    "obonet>=1.0",
+    "harmony-pytorch>0.1.6",
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ['popv']
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "twine>=4.0.2"
+]
+doc = [
+    "docutils>=0.8,!=0.18.*,!=0.19.*",
+    "sphinx>=4",
+    "sphinx-book-theme>=1.0.0",
+    "myst-nb",
+    "sphinxcontrib-bibtex>=1.0.0",
+    "sphinx-autodoc-typehints",
+    "sphinxext-opengraph",
+    # For notebooks
+    "ipykernel",
+    "ipython",
+    "sphinx-copybutton",
+    "pandas",
+]
+test = [
+    "pytest",
+    "coverage",
+]
 
 [tool.coverage.run]
 source = ["popv"]
@@ -103,31 +72,16 @@ omit = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 xfail_strict = true
-
+addopts = [
+    "--import-mode=importlib",  # allow using test files with same name
+]
 
 [tool.black]
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs
-    | \.git
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-)
-'''
+line-length = 120
 
 [tool.ruff]
-src = ["."]
-line-length = 119
-target-version = "py38"
+src = ["src"]
+line-length = 120
 select = [
     "F",  # Errors detected by Pyflakes
     "E",  # Error detected by Pycodestyle
@@ -163,22 +117,28 @@ ignore = [
     # First line should be in imperative mood; try rephrasing
     "D401",
     ## Disable one in each pair of mutually incompatible rules
-    # We don't want a blank line before a class docstring
+    # We don’t want a blank line before a class docstring
     "D203",
     # We want docstrings to start immediately after the opening triple quote
     "D213",
-    # Missing argument description in the docstring TODO: enable
-    "D417",
 ]
 
 [tool.ruff.pydocstyle]
 convention = "numpy"
 
 [tool.ruff.per-file-ignores]
-"docs/*" = ["I", "BLE001"]
+"docs/*" = ["I"]
 "tests/*" = ["D"]
 "*/__init__.py" = ["F401"]
-"popv/__init__.py" = ["I"]
 
-[tool.jupytext]
-formats = "ipynb,md"
+[tool.cruft]
+skip = [
+    "tests",
+    "src/**/__init__.py",
+    "src/**/basic.py",
+    "docs/api.md",
+    "docs/changelog.md",
+    "docs/references.bib",
+    "docs/references.md",
+    "docs/notebooks/example.ipynb"
+]

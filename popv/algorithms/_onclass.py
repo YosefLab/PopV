@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import numpy as np
 import obonet
@@ -105,14 +104,10 @@ class ONCLASS:
         pass
 
     def predict(self, adata):
-        logging.info(
-            'Computing Onclass. Storing prediction in adata.obs["{}"]'.format(
-                self.result_key
-            )
-        )
-        adata.obs.loc[
-            adata.obs["_dataset"] == "query", self.cell_ontology_obs_key
-        ] = adata.uns["unknown_celltype_label"]
+        logging.info(f'Computing Onclass. Storing prediction in adata.obs["{self.result_key}"]')
+        adata.obs.loc[adata.obs["_dataset"] == "query", self.cell_ontology_obs_key] = adata.uns[
+            "unknown_celltype_label"
+        ]
 
         train_idx = adata.obs["_dataset"] == "ref"
 
@@ -130,14 +125,10 @@ class ONCLASS:
         cl_ontology_file = adata.uns["_cl_ontology_file"]
         nlp_emb_file = adata.uns["_nlp_emb_file"]
 
-        celltype_dict, clid_2_name = self.make_celltype_to_cell_ontology_id_dict(
-            cl_obo_file
-        )
+        celltype_dict, clid_2_name = self.make_celltype_to_cell_ontology_id_dict(cl_obo_file)
         self.make_cell_ontology_id(adata, celltype_dict, self.cell_ontology_obs_key)
 
-        train_model = OnClassModel(
-            cell_type_nlp_emb_file=nlp_emb_file, cell_type_network_file=cl_ontology_file
-        )
+        train_model = OnClassModel(cell_type_nlp_emb_file=nlp_emb_file, cell_type_network_file=cl_ontology_file)
 
         if adata.uns["_save_path_trained_models"] is not None:
             model_path = adata.uns["_save_path_trained_models"] + "/OnClass"
@@ -182,17 +173,13 @@ class ONCLASS:
         )
 
         if adata.uns["_prediction_mode"] == "fast":
-            onclass_seen = np.argmax(
-                train_model.model.predict(corr_test_feature), axis=1
-            )
+            onclass_seen = np.argmax(train_model.model.predict(corr_test_feature), axis=1)
             pred_label = [train_model.i2co[ind] for ind in onclass_seen]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
             adata.obs[self.result_key] = pred_label_str
             adata.obs["onclass_seen"] = pred_label_str
         else:
-            onclass_pred = train_model.Predict(
-                corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.0
-            )
+            onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.0)
             pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
             adata.obs[self.result_key] = pred_label_str
@@ -203,15 +190,9 @@ class ONCLASS:
             adata.obs[self.seen_result_key] = pred_label_str
 
             if adata.uns["_return_probabilities"]:
-                adata.obs[self.result_key + "_probabilities"] = np.max(
-                    onclass_pred[1], axis=1
-                ) / onclass_pred[1].sum(1)
-                adata.obsm["onclass_probabilities"] = onclass_pred[1] / onclass_pred[
-                    1
-                ].sum(1, keepdims=True)
-                adata.obs["popv_onclass_seen" + "_probabilities"] = np.max(
-                    onclass_pred[0], axis=1
-                )
+                adata.obs[self.result_key + "_probabilities"] = np.max(onclass_pred[1], axis=1) / onclass_pred[1].sum(1)
+                adata.obsm["onclass_probabilities"] = onclass_pred[1] / onclass_pred[1].sum(1, keepdims=True)
+                adata.obs["popv_onclass_seen" + "_probabilities"] = np.max(onclass_pred[0], axis=1)
 
     def compute_embedding(self, adata):
         return None
