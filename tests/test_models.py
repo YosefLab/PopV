@@ -11,7 +11,7 @@ from popv.preprocessing import Process_Query
 
 def _get_test_anndata(cl_obo_folder="popv/ontology/"):
     print(os.getcwd())
-    save_folder = "popv_test_results/"
+    save_folder = "tests/tmp_testing/popv_test_results/"
     fn = save_folder + "annotated_query.h5ad"
     if exists(save_folder + fn):
         return anndata.read(save_folder + fn)
