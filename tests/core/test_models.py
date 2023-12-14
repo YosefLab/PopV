@@ -49,7 +49,7 @@ def _get_test_anndata(cl_obo_folder="ontology/"):
         compute_embedding=True,
         return_probabilities=True,
         accelerator="cpu",
-        devices=None,
+        devices="auto",
         hvg=4000,
     )
 
