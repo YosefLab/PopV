@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import celltypist
 
@@ -8,9 +7,9 @@ class CELLTYPIST:
     def __init__(
         self,
         batch_key: str | None = "_batch_annotation",
-        labels_key: str | None  = "_labels_annotation",
-        result_key: str | None  = "popv_celltypist_prediction",
-        method_dict: dict | None  = None,
+        labels_key: str | None = "_labels_annotation",
+        result_key: str | None = "popv_celltypist_prediction",
+        method_dict: dict | None = None,
         classifier_dict: dict | None = None,
     ) -> None:
         """
@@ -29,16 +28,17 @@ class CELLTYPIST:
         classifier_dict
             Dictionary to supply non-default values for celltypist annotation. Options at celltypist.annotate
         """
-
         self.batch_key = batch_key
         self.labels_key = labels_key
         self.result_key = result_key
 
         self.method_dict = {"check_expression": False, "n_jobs": 10, "max_iter": 500}
-        self.method_dict.update(method_dict)
+        if method_dict is not None:
+            self.method_dict.update(method_dict)
 
         self.classifier_dict = {"mode": "best match", "majority_voting": True}
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
     def compute_integration(self, adata):
         pass
@@ -61,16 +61,12 @@ class CELLTYPIST:
             **self.classifier_dict,
         )
         out_column = (
-            "majority_voting"
-            if "majority_voting" in predictions.predicted_labels.columns
-            else "predicted_labels"
+            "majority_voting" if "majority_voting" in predictions.predicted_labels.columns else "predicted_labels"
         )
 
         adata.obs[self.result_key] = predictions.predicted_labels[out_column]
         if adata.uns["_return_probabilities"]:
-            adata.obs[
-                self.result_key + "_probabilities"
-            ] = predictions.probability_matrix.max(axis=1).values
+            adata.obs[self.result_key + "_probabilities"] = predictions.probability_matrix.max(axis=1).values
 
     def compute_embedding(self, adata):
         pass

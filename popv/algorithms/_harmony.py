@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import numpy as np
 import scanpy as sc
@@ -40,27 +39,27 @@ class HARMONY:
         embedding_dict
             Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
         """
-
         self.batch_key = batch_key
         self.labels_key = labels_key
         self.result_key = result_key
         self.embedding_key = embedding_key
 
         self.method_dict = {"dimred": 50}
-        self.method_dict.update(method_dict)
+        if method_dict is not None:
+            self.method_dict.update(method_dict)
 
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
         self.embedding_dict = {"min_dist": 0.1}
-        self.embedding_dict.update(embedding_dict)
+        if embedding_dict is not None:
+            self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
         logging.info("Integrating data with harmony")
 
-        adata.obsm["X_pca_harmony"] = harmonize(
-            adata.obsm["X_pca"], adata.obs, batch_key=self.batch_key
-        )
+        adata.obsm["X_pca_harmony"] = harmonize(adata.obsm["X_pca"], adata.obs, batch_key=self.batch_key)
 
     def predict(self, adata, result_key="popv_knn_on_harmony_prediction"):
         logging.info(f'Saving knn on harmony results to adata.obs["{result_key}"]')
@@ -74,9 +73,7 @@ class HARMONY:
                 n_neighbors=self.classifier_dict["n_neighbors"],
                 parallel_batch_queries=True,
             ),
-            KNeighborsClassifier(
-                metric="precomputed", weights=self.classifier_dict["weights"]
-            ),
+            KNeighborsClassifier(metric="precomputed", weights=self.classifier_dict["weights"]),
         )
 
         knn.fit(train_X, train_Y)
@@ -92,10 +89,6 @@ class HARMONY:
 
     def compute_embedding(self, adata):
         if adata.uns["_compute_embedding"]:
-            logging.info(
-                f'Saving UMAP of harmony results to adata.obs["{self.embedding_key}"]'
-            )
+            logging.info(f'Saving UMAP of harmony results to adata.obs["{self.embedding_key}"]')
             sc.pp.neighbors(adata, use_rep="X_pca_harmony")
-            adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, **self.embedding_dict
-            ).obsm["X_umap"]
+            adata.obsm[self.embedding_key] = sc.tl.umap(adata, copy=True, **self.embedding_dict).obsm["X_umap"]

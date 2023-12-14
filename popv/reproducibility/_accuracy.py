@@ -1,5 +1,4 @@
 import networkx as nx
-
 from popv import _utils
 
 
@@ -31,13 +30,11 @@ def _ontology_accuracy(adata, pred_key, gt_key, obofile, save_key=None):
         else:
             return "no match"
 
-    adata.obs[save_key] = adata.obs.apply(
-        lambda x: match_type(x[pred_key], x[gt_key]), axis=1
-    )
+    adata.obs[save_key] = adata.obs.apply(lambda x: match_type(x[pred_key], x[gt_key]), axis=1)
 
 
 def _fine_ontology_sibling_accuracy(adata, obofile, pred_key, gt_key, save_key=None):
-    "Calculates the fine ontology accuracy and also determines the distance to siblings"
+    """Calculates the fine ontology accuracy and also determines the distance to siblings"""
     if save_key is None:
         save_key = pred_key + "_ontology_distance"
     adata.obs[save_key] = None
@@ -46,9 +43,7 @@ def _fine_ontology_sibling_accuracy(adata, obofile, pred_key, gt_key, save_key=N
 
     ontology_distance_dict = {}
 
-    for name, pred_ct, gt_ct in zip(
-        adata.obs_names, adata.obs[pred_key], adata.obs[gt_key]
-    ):
+    for name, pred_ct, gt_ct in zip(adata.obs_names, adata.obs[pred_key], adata.obs[gt_key]):
         score = None
         combination = f"{pred_ct}_{gt_ct}"
         if combination in ontology_distance_dict:
@@ -62,9 +57,7 @@ def _fine_ontology_sibling_accuracy(adata, obofile, pred_key, gt_key, save_key=N
                 score = nx.shortest_path_length(dag, source=gt_ct, target=pred_ct) - 1
                 score *= -1
             else:
-                paths = nx.algorithms.simple_paths.shortest_simple_paths(
-                    nx.Graph(dag), source=pred_ct, target=gt_ct
-                )
+                paths = nx.algorithms.simple_paths.shortest_simple_paths(nx.Graph(dag), source=pred_ct, target=gt_ct)
                 path = next(paths, None)
                 if path is None:
                     score = 1000

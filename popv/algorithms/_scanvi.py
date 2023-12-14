@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import numpy as np
 import scanpy as sc
@@ -46,7 +45,6 @@ class SCANVI_POPV:
         embedding_dict
             Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
         """
-
         self.batch_key = batch_key
         self.labels_key = labels_key
         self.result_key = result_key
@@ -66,14 +64,16 @@ class SCANVI_POPV:
             "use_layer_norm": "both",
             "encode_covariates": True,
         }
-
-        self.model_kwargs.update(model_kwargs)
+        if model_kwargs is not None:
+            self.model_kwargs.update(model_kwargs)
 
         self.classifier_kwargs = {"n_layers": 3, "dropout_rate": 0.1}
-        self.classifier_kwargs.update(classifier_kwargs)
+        if classifier_kwargs is not None:
+            self.classifier_kwargs.update(classifier_kwargs)
 
         self.embedding_dict = {"min_dist": 0.3}
-        self.embedding_dict.update(embedding_dict)
+        if embedding_dict is not None:
+            self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
         logging.info("Integrating data with scANVI")
@@ -82,13 +82,9 @@ class SCANVI_POPV:
         if "subsampled_labels" not in adata.obs.columns:
             adata.obs["subsampled_labels"] = [
                 label if subsampled else adata.uns["unknown_celltype_label"]
-                for label, subsampled in zip(
-                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"]
-                )
+                for label, subsampled in zip(adata.obs["_labels_annotation"], adata.obs["_ref_subsample"])
             ]
-        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype(
-            "category"
-        )
+        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype("category")
         yprior = torch.tensor(
             [
                 adata.obs["_labels_annotation"].value_counts()[i] / adata.n_obs
@@ -98,15 +94,11 @@ class SCANVI_POPV:
         )
 
         if self.n_epochs_unsupervised is None:
-            self.n_epochs_unsupervised = round(
-                min(round((10000 / adata.n_obs) * 200), 200)
-            )
+            self.n_epochs_unsupervised = round(min(round((10000 / adata.n_obs) * 200), 200))
 
         if adata.uns["_prediction_mode"] == "retrain":
             if adata.uns["_pretrained_scvi_path"] is not None:
-                scvi_model = scvi.model.SCVI.load(
-                    adata.uns["_save_path_trained_models"] + "/scvi", adata=adata
-                )
+                scvi_model = scvi.model.SCVI.load(adata.uns["_save_path_trained_models"] + "/scvi", adata=adata)
             else:
                 scvi.model.SCVI.setup_anndata(
                     adata,
@@ -170,25 +162,15 @@ class SCANVI_POPV:
                 )
 
     def predict(self, adata):
-        logging.info(
-            f'Saving scanvi label prediction to adata.obs["{self.result_key}"]'
-        )
+        logging.info(f'Saving scanvi label prediction to adata.obs["{self.result_key}"]')
 
         adata.obs[self.result_key] = self.model.predict(adata)
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + "_probabilities"] = np.max(
-                self.model.predict(adata, soft=True), axis=1
-            )
+            adata.obs[self.result_key + "_probabilities"] = np.max(self.model.predict(adata, soft=True), axis=1)
 
     def compute_embedding(self, adata):
         if adata.uns["_compute_embedding"]:
-            logging.info(
-                'Saving UMAP of scanvi results to adata.obs["{}"]'.format(
-                    self.embedding_key
-                )
-            )
+            logging.info(f'Saving UMAP of scanvi results to adata.obs["{self.embedding_key}"]')
             adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)
             sc.pp.neighbors(adata, use_rep="X_scanvi")
-            adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, **self.embedding_dict
-            ).obsm["X_umap"]
+            adata.obsm[self.embedding_key] = sc.tl.umap(adata, copy=True, **self.embedding_dict).obsm["X_umap"]

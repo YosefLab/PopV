@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 import numpy as np
 import scanpy as sc
@@ -37,7 +36,6 @@ class BBKNN:
         embedding_dict
             Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
         """
-
         self.batch_key = batch_key
         self.labels_key = labels_key
         self.result_key = result_key
@@ -48,13 +46,16 @@ class BBKNN:
             "n_pcs": 50,
             "neighbors_within_batch": 8,
         }
-        self.method_dict.update(method_dict)
+        if method_dict is not None:
+            self.method_dict.update(method_dict)
 
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
         self.embedding_dict = {"min_dist": 0.1}
-        self.embedding_dict.update(embedding_dict)
+        if embedding_dict is not None:
+            self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
         logging.info("Integrating data with bbknn")
@@ -83,9 +84,7 @@ class BBKNN:
             ]
         )
         if smallest_neighbor_graph < 15:
-            logging.warning(
-                f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN."
-            )
+            logging.warning(f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN.")
             self.classifier_dict["n_neighbors"] = smallest_neighbor_graph
 
         knn = KNeighborsClassifier(metric="precomputed", **self.classifier_dict)
@@ -94,15 +93,9 @@ class BBKNN:
         adata.obs[self.result_key] = knn.predict(test_distances)
 
         if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + "_probabilities"] = np.max(
-                knn.predict_proba(test_distances), axis=1
-            )
+            adata.obs[self.result_key + "_probabilities"] = np.max(knn.predict_proba(test_distances), axis=1)
 
     def compute_embedding(self, adata):
         if adata.uns["_compute_embedding"]:
-            logging.info(
-                f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]'
-            )
-            adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, **self.embedding_dict
-            ).obsm["X_umap"]
+            logging.info(f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]')
+            adata.obsm[self.embedding_key] = sc.tl.umap(adata, copy=True, **self.embedding_dict).obsm["X_umap"]

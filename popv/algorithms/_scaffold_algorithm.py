@@ -1,7 +1,6 @@
 # Method that hightlights how to implement a new classifier. All class items are necessary but can contain Pass as only function argument.
 
 import logging
-from typing import Optional
 
 # Import classifier here.
 
@@ -41,7 +40,6 @@ class NEW_ALGORITHM:
         embedding_dict
             Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
         """
-
         self.batch_key = batch_key
         self.labels_key = labels_key
         self.layers_key = layers_key
@@ -51,15 +49,18 @@ class NEW_ALGORITHM:
 
         # Necessary for integration method. Contains parameters for integration method.
         self.method_dict = {}
-        self.method_dict.update(method_dict)
+        if method_dict is not None:
+            self.method_dict.update(method_dict)
 
         # Necessary for classifier. Contains parameters for classifier.
         self.classifier_dict = {}
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
         # Necessary for integration method. Contains parameters for UMAP embedding.
         self.embedding_dict = {}
-        self.embedding_dict.update(embedding_dict)
+        if embedding_dict is not None:
+            self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
         logging.info("Integrating data with new integration method")
@@ -67,18 +68,12 @@ class NEW_ALGORITHM:
         # adata.obsm["X_new_method"] = embedded_data
 
     def predict(self, adata):
-        logging.info(
-            'Computing new classifier method. Storing prediction in adata.obs["{}"]'.format(
-                self.result_key
-            )
-        )
+        logging.info(f'Computing new classifier method. Storing prediction in adata.obs["{self.result_key}"]')
         # adata.obs[self.result_key] = classifier_results
 
     def compute_embedding(self, adata):
         if adata.uns["_compute_embedding"]:
-            logging.info(
-                f'Saving UMAP of new integration method to adata.obs["{self.embedding_key}"]'
-            )
+            logging.info(f'Saving UMAP of new integration method to adata.obs["{self.embedding_key}"]')
             # sc.pp.neighbors(adata, use_rep="embedding_space")
             # adata.obsm[self.embedding_key] = sc.tl.umap(
             #     adata, copy=True, **self.embedding_dict
