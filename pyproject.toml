@@ -33,7 +33,7 @@ dependencies = [
     "scikit-learn>0.21.2,<1.2",
     "scikit-misc>=0.1",
     "scvi-tools>1.0.0",
-    "tensorflow>2.15.0",
+    "tensorflow>2.11.0",
     "transformers>4.25.0",
     "obonet>=1.0",
     "harmony-pytorch>0.1.6",
