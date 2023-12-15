@@ -4,9 +4,8 @@ from os.path import exists
 
 import anndata
 import numpy as np
-import scanpy as sc
-
 import popv
+import scanpy as sc
 from popv.preprocessing import Process_Query
 
 
@@ -181,9 +180,7 @@ def test_annotation():
     popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
-    popv.visualization.make_agreement_plots(
-        adata, prediction_keys=adata.uns["prediction_keys"]
-    )
+    popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])
     popv.visualization.celltype_ratio_bar_plot(adata)
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
@@ -196,9 +193,7 @@ def test_annotation_no_ontology():
     popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
-    popv.visualization.make_agreement_plots(
-        adata, prediction_keys=adata.uns["prediction_keys"]
-    )
+    popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])
     popv.visualization.celltype_ratio_bar_plot(adata)
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
