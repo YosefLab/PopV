@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Union
 
 import torch
 from rich.console import Console
@@ -48,7 +49,7 @@ class Config:
         return self._logging_dir
 
     @logging_dir.setter
-    def logging_dir(self, logging_dir: Union[str, Path]):
+    def logging_dir(self, logging_dir: str | Path):
         self._logging_dir = Path(logging_dir).resolve()
 
     @property
@@ -80,7 +81,7 @@ class Config:
         return self._verbosity
 
     @verbosity.setter
-    def verbosity(self, level: Union[str, int]):
+    def verbosity(self, level: str | int):
         """
         Sets logging configuration for popv based on chosen level of verbosity.
 

@@ -1,4 +1,5 @@
 # Method that hightlights how to implement a new classifier. All class items are necessary but can contain Pass as only function argument.
+from __future__ import annotations
 
 import logging
 

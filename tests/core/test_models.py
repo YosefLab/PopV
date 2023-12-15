@@ -9,17 +9,17 @@ import scanpy as sc
 from popv.preprocessing import Process_Query
 
 
-def _get_test_anndata(cl_obo_folder="ontology/"):
-    print(os.getcwd())
-    save_folder = "popv_test_results/"
+def _get_test_anndata(cl_obo_folder="resources/ontology/"):
+    print("UUU", os.getcwd())
+    save_folder = "tests/tmp_testing/popv_test_results/"
     fn = save_folder + "annotated_query.h5ad"
     if exists(save_folder + fn):
         return anndata.read(save_folder + fn)
 
-    ref_adata_path = "dataset/test/ts_lung_subset.h5ad"
+    ref_adata_path = "resources/dataset/test/ts_lung_subset.h5ad"
     ref_adata = sc.read(ref_adata_path)
 
-    query_adata_path = "dataset/test/lca_subset.h5ad"
+    query_adata_path = "resources/dataset/test/lca_subset.h5ad"
     query_adata = sc.read(query_adata_path)
     assert query_adata.n_vars == query_adata.X.shape[1]
 

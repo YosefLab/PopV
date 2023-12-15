@@ -1,5 +1,7 @@
 """Function to plot cell-type annotation."""
 
+from __future__ import annotations
+
 import logging
 import os
 

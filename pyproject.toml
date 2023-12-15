@@ -2,9 +2,15 @@
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
+[tool.hatch.build.targets.wheel]
+exclude = ["resources/*", "tests/*", "dataset/*"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["resources/*", "tests/*", "dataset/*"]
+
 [project]
 name = "PopV"
-version = "0.4.0"
+version = "0.4.1"
 description = "Consensus prediction of cell type labels with popV"
 readme = "README.md"
 requires-python = ">=3.9"

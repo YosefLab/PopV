@@ -1,5 +1,7 @@
 """Helper function to execute cell-type annotation and accumulate results."""
 
+from __future__ import annotations
+
 import inspect
 import logging
 import os

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Shim to allow Github to detect the package, build is done with poetry."""
+"""Shim to allow Github to detect the package, build is done with hatch."""
 
 # !/usr/bin/env python
 

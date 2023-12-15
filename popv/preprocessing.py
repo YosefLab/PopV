@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import logging
 import os
 import subprocess
-from typing import Union
 
 import anndata
 import numpy as np
@@ -25,14 +26,14 @@ class Process_Query:
         query_batch_key: str | None = None,
         query_layers_key: str | None = None,
         prediction_mode: str | None = "retrain",
-        cl_obo_folder: Union[list, str, bool] | None = None,
+        cl_obo_folder: list | str | bool | None = None,
         unknown_celltype_label: str | None = "unknown",
         n_samples_per_label: int | None = 300,
         pretrained_scvi_path: str | None = None,
         save_path_trained_models: str | None = "tmp/",
         hvg: int | None = 4000,
         accelerator: str | None = "cuda",
-        devices: Union[int, str] | None = "auto",
+        devices: int | str | None = "auto",
         compute_embedding: bool = True,
         return_probabilities: bool = True,
     ) -> None:

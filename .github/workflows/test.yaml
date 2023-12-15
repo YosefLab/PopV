@@ -26,6 +26,8 @@ jobs:
           - os: ubuntu-latest
             python: "3.9"
           - os: ubuntu-latest
+            python: "3.10"
+          - os: ubuntu-latest
             python: "3.11"
           - os: ubuntu-latest
             python: "3.11"
