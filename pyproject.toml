@@ -30,6 +30,7 @@ dependencies = [
     "pandas<2.0.0,>=1.4.0",
     "bbknn>1.5.0",
     "celltypist>1.3.0",
+    "chex<0.1.3",
     "gdown>4.6.0",
     "h5py>3.7.0",
     "huggingface-hub>=0.11.1",
