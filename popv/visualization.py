@@ -156,7 +156,7 @@ def prediction_score_bar_plot(
 def celltype_ratio_bar_plot(
     adata,
     popv_prediction: str | None = "popv_prediction",
-    normalize: bool = True
+    normalize: bool = True,
     save_folder: str | None = None,
 ):
     """
