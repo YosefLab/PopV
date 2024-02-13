@@ -177,7 +177,7 @@ def test_celltypist():
 def test_annotation():
     """Test Annotation and Plotting pipeline."""
     adata = _get_test_anndata().adata
-    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
+    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/")
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
     popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])
@@ -190,7 +190,7 @@ def test_annotation():
 def test_annotation_no_ontology():
     """Test Annotation and Plotting pipeline without ontology."""
     adata = _get_test_anndata(cl_obo_folder=False).adata
-    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path=None)
+    popv.annotation.annotate_data(adata, methods=["svm", "rf"], save_path="tests/tmp_testing/popv_test_results/")
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
     popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])

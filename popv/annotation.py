@@ -78,7 +78,7 @@ def annotate_data(
         adata.obs[["popv_prediction", "popv_prediction_score"]] = adata.obs[
             ["popv_majority_vote_prediction", "popv_majority_vote_score"]
         ]
-        adata.obs[["popv_prediction_parent"]] = adata.obs[["popv_majority_vote_prediction"]]
+        adata.obs[["popv_parent"]] = adata.obs[["popv_majority_vote_prediction"]]
     else:
         ontology_vote_onclass(adata, all_prediction_keys)
         ontology_parent_onclass(adata, all_prediction_keys)

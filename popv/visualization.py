@@ -156,6 +156,7 @@ def prediction_score_bar_plot(
 def celltype_ratio_bar_plot(
     adata,
     popv_prediction: str | None = "popv_prediction",
+    normalize: bool = True,
     save_folder: str | None = None,
 ):
     """
@@ -167,6 +168,8 @@ def celltype_ratio_bar_plot(
         AnnData object.
     popv_prediction
         Key in adata.obs for predictions.
+    normalize
+        Plot relative cell-type abundance. Set to False to plot absolute abundance.
     save_folder
         Path to a folder for storing the plot. Defaults to None and plot is not stored.
 
@@ -182,6 +185,8 @@ def celltype_ratio_bar_plot(
     for x in cell_types:
         prop.loc[x, "query"] = np.sum(labels[is_query] == x)
         prop.loc[x, "ref"] = np.sum(labels[~is_query] == x)
+    if normalize:
+        prop = prop.div(prop.sum(axis=1))
 
     ax = prop.loc[cell_types].plot(kind="bar", figsize=(len(cell_types) * 0.5, 4), logy=True)
     ax.set_ylabel("Celltype")
