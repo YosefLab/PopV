@@ -4,7 +4,9 @@ from typing import Optional
 import numpy as np
 import obonet
 import scipy
+import pandas as pd
 from OnClass.OnClassModel import OnClassModel
+from popv import settings
 
 
 class ONCLASS:
@@ -46,7 +48,6 @@ class ONCLASS:
             self.cell_ontology_obs_key = self.labels_key + "_cell_ontology_id"
         else:
             self.cell_ontology_obs_key = cell_ontology_obs_key
-        self.shard_size = 50000
         self.max_iter = max_iter
 
     def make_celltype_to_cell_ontology_id_dict(self, cl_obo_file):
@@ -114,17 +115,16 @@ class ONCLASS:
             adata.obs["_dataset"] == "query", self.cell_ontology_obs_key
         ] = adata.uns["unknown_celltype_label"]
 
-        train_idx = adata.obs["_dataset"] == "ref"
+        train_idx = adata.obs["_ref_subsample"]
 
         if self.layers_key is None:
-            train_X = adata[train_idx].X.copy()
-            test_X = adata.X.copy()
+            train_x = adata[train_idx].X.copy()
+            test_x = adata.X.copy()
         else:
-            train_X = adata[train_idx].layers[self.layers_key].copy()
-            test_X = adata.layers[self.layers_key].copy()
-        if scipy.sparse.issparse(train_X):
-            train_X = train_X.todense()
-            test_X = test_X.todense()
+            train_x = adata[train_idx].layers[self.layers_key].copy()
+            test_x = adata.layers[self.layers_key].copy()
+        if scipy.sparse.issparse(train_x):
+            train_x = train_x.todense()
 
         cl_obo_file = adata.uns["_cl_obo_file"]
         cl_ontology_file = adata.uns["_cl_ontology_file"]
@@ -145,73 +145,83 @@ class ONCLASS:
             model_path = None
 
         if adata.uns["_prediction_mode"] == "retrain":
-            train_Y = adata[train_idx].obs[self.cell_ontology_obs_key]
-            _ = train_model.EmbedCellTypes(train_Y)
+            train_y = adata[train_idx].obs[self.cell_ontology_obs_key]
+            _ = train_model.EmbedCellTypes(train_y)
 
             (
                 corr_train_feature,
-                corr_test_feature,
                 corr_train_genes,
-                _,
             ) = train_model.ProcessTrainFeature(
-                train_X,
-                train_Y,
+                train_x,
+                train_y,
                 adata.var_names,
-                test_feature=test_X,
-                test_genes=adata.var_names,
                 log_transform=False,
             )
 
             train_model.BuildModel(ngene=len(corr_train_genes))
             train_model.Train(
                 corr_train_feature,
-                train_Y,
+                train_y,
                 save_model=model_path,
                 max_iter=self.max_iter,
             )
         else:
             train_model.BuildModel(ngene=None, use_pretrain=model_path)
 
-        adata.obs[self.result_key] = None
-
-        corr_test_feature = train_model.ProcessTestFeature(
-            test_feature=test_X,
-            test_genes=adata.var_names,
-            use_pretrain=model_path,
-            log_transform=False,
-        )
-
-        if adata.uns["_prediction_mode"] == "fast":
-            onclass_seen = np.argmax(
-                train_model.model.predict(corr_test_feature), axis=1
-            )
-            pred_label = [train_model.i2co[ind] for ind in onclass_seen]
-            pred_label_str = [clid_2_name[ind] for ind in pred_label]
-            adata.obs[self.result_key] = pred_label_str
-            adata.obs["onclass_seen"] = pred_label_str
+        if adata.uns["_return_probabilities"]:
+            required_columns = [
+                self.seen_result_key, self.result_key, self.result_key + "_probabilities", self.seen_result_key + "_probabilities"]
         else:
-            onclass_pred = train_model.Predict(
-                corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.0
+            required_columns = [
+                self.seen_result_key, self.result_key]
+
+        result_df = pd.DataFrame(
+            index=adata.obs_names,
+            columns=required_columns
+        )
+        shard_size = int(settings.shard_size)
+        for i in range(0, adata.n_obs, shard_size):
+            tmp_x = test_x[i : i + shard_size]
+            names_x = adata.obs_names[i : i + shard_size]
+            if scipy.sparse.issparse(test_x):
+                tmp_x = tmp_x.todense()
+            corr_test_feature = train_model.ProcessTestFeature(
+                test_feature=tmp_x,
+                test_genes=adata.var_names,
+                use_pretrain=model_path,
+                log_transform=False,
             )
-            pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
-            pred_label_str = [clid_2_name[ind] for ind in pred_label]
-            adata.obs[self.result_key] = pred_label_str
 
-            onclass_seen = np.argmax(onclass_pred[0], axis=1)
-            pred_label = [train_model.i2co[ind] for ind in onclass_seen]
-            pred_label_str = [clid_2_name[ind] for ind in pred_label]
-            adata.obs[self.seen_result_key] = pred_label_str
-
-            if adata.uns["_return_probabilities"]:
-                adata.obs[self.result_key + "_probabilities"] = np.max(
-                    onclass_pred[1], axis=1
-                ) / onclass_pred[1].sum(1)
-                adata.obsm["onclass_probabilities"] = onclass_pred[1] / onclass_pred[
-                    1
-                ].sum(1, keepdims=True)
-                adata.obs["popv_onclass_seen" + "_probabilities"] = np.max(
-                    onclass_pred[0], axis=1
+            if adata.uns["_prediction_mode"] == "fast":
+                onclass_seen = np.argmax(
+                    train_model.model.predict(corr_test_feature), axis=1
                 )
+                pred_label = [train_model.i2co[ind] for ind in onclass_seen]
+                pred_label_str = [clid_2_name[ind] for ind in pred_label]
+                result_df.loc[names_x, self.result_key] = pred_label_str
+                result_df.loc[names_x, self.seen_result_key] = pred_label_str
+            else:
+                onclass_pred = train_model.Predict(
+                    corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.0
+                )
+                pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
+                pred_label_str = [clid_2_name[ind] for ind in pred_label]
+                result_df.loc[names_x, self.result_key] = pred_label_str
+                result_df
+
+                onclass_seen = np.argmax(onclass_pred[0], axis=1)
+                pred_label = [train_model.i2co[ind] for ind in onclass_seen]
+                pred_label_str = [clid_2_name[ind] for ind in pred_label]
+                result_df.loc[names_x, self.seen_result_key] = pred_label_str
+
+                if adata.uns["_return_probabilities"]:
+                    result_df.loc[names_x, self.result_key + "_probabilities"] = np.max(
+                        onclass_pred[1], axis=1
+                    ) / onclass_pred[1].sum(1)
+                    result_df.loc[names_x, self.seen_result_key + "_probabilities"] = np.max(
+                        onclass_pred[0], axis=1
+                    )
+        adata.obs[result_df.columns] = result_df
 
     def compute_embedding(self, adata):
         return None

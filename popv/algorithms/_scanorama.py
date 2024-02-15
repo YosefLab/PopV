@@ -8,7 +8,7 @@ import scanpy as sc
 from pynndescent import PyNNDescentTransformer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
-
+from popv import settings
 
 class SCANORAMA:
     def __init__(
@@ -53,7 +53,9 @@ class SCANORAMA:
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         self.classifier_dict.update(classifier_dict)
 
-        self.embedding_dict = {"min_dist": 0.1}
+        self.embedding_dict = {
+            "min_dist": 0.1,
+        }
         self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
@@ -70,25 +72,29 @@ class SCANORAMA:
     def predict(self, adata, result_key="popv_knn_on_scanorama_prediction"):
         logging.info(f'Saving knn on scanorama results to adata.obs["{result_key}"]')
 
-        ref_idx = adata.obs["_dataset"] == "ref"
+        ref_idx = adata.obs["_labelled_train_indices"]
         train_X = adata[ref_idx].obsm["X_scanorama"]
-        train_Y = adata[ref_idx].obs[self.labels_key].to_numpy()
+        train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
 
-        knn = make_pipeline(
-            PyNNDescentTransformer(
-                n_neighbors=self.classifier_dict["n_neighbors"],
-                parallel_batch_queries=True,
-            ),
-            KNeighborsClassifier(
-                metric="precomputed", weights=self.classifier_dict["weights"]
-            ),
-        )
+        if settings.cuml:
+            from cuml.neighbors import KNeighborsClassifier as cuKNeighbors
+            knn = cuKNeighbors(n_neighbors=self.classifier_dict["n_neighbors"])
+        else:
+            knn = make_pipeline(
+                PyNNDescentTransformer(
+                    n_neighbors=self.classifier_dict["n_neighbors"],
+                    parallel_batch_queries=True,
+                ),
+                KNeighborsClassifier(
+                    metric="precomputed", weights=self.classifier_dict["weights"]
+                ),
+            )
 
         knn.fit(train_X, train_Y)
         knn_pred = knn.predict(adata.obsm["X_scanorama"])
 
         # save_results
-        adata.obs[result_key] = knn_pred
+        adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[knn_pred]
 
         if adata.uns["_return_probabilities"]:
             adata.obs[self.result_key + "_probabilities"] = np.max(
@@ -100,7 +106,9 @@ class SCANORAMA:
             logging.info(
                 f'Saving UMAP of scanorama results to adata.obs["{self.embedding_key}"]'
             )
-            sc.pp.neighbors(adata, use_rep="X_scanorama")
+
+            method = 'rapids' if settings.cuml else 'umap'
+            sc.pp.neighbors(adata, use_rep="X_scanorama", method=method)
             adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, **self.embedding_dict
+                adata, copy=True, method=method, **self.embedding_dict
             ).obsm["X_umap"]

@@ -2,10 +2,14 @@ import logging
 import pickle
 from ast import Pass
 from typing import Optional
+import pandas as pd
+import scipy.sparse as scp
 
 import numpy as np
 from sklearn import svm
 from sklearn.calibration import CalibratedClassifierCV
+
+from popv import settings
 
 
 class SVM:
@@ -18,7 +22,7 @@ class SVM:
         classifier_dict: Optional[str] = {},
     ) -> None:
         """
-        Class to compute KNN classifier after BBKNN integration.
+        Class to compute LinearSVC.
 
         Parameters
         ----------
@@ -64,10 +68,17 @@ class SVM:
                 if self.layers_key
                 else adata[train_idx].X
             )
-            train_y = adata[train_idx].obs[self.labels_key].to_numpy()
-            clf = CalibratedClassifierCV(svm.LinearSVC(**self.classifier_dict))
+            train_y = adata.obs.loc[train_idx, self.labels_key].cat.codes.to_numpy()
+            if settings.cuml:
+                from cuml.svm import LinearSVC
+                from sklearn.multiclass import OneVsRestClassifier
+                self.classifier_dict['probability'] = adata.uns["_return_probabilities"]
+                clf = OneVsRestClassifier(LinearSVC(**self.classifier_dict))
+                train_x = train_x.todense()
+            else:
+                clf = CalibratedClassifierCV(svm.LinearSVC(**self.classifier_dict))
             clf.fit(train_x, train_y)
-            if adata.uns["_save_path_trained_models"]:
+            if adata.uns["_save_path_trained_models"] and not settings.cuml:
                 pickle.dump(
                     clf,
                     open(
@@ -82,14 +93,35 @@ class SVM:
                 )
             )
 
-        adata.obs[self.result_key] = clf.predict(test_x)
+        if settings.cuml and scp.issparse(test_x):
+            if adata.uns["_return_probabilities"]:
+                required_columns = [
+                    self.result_key, self.result_key + "_probabilities"]
+            else:
+                required_columns = [
+                    self.result_key]
 
-        if adata.uns["_return_probabilities"]:
-            adata.obs[self.result_key + "_probabilities"] = np.max(
-                clf.predict_proba(test_x), axis=1
+            result_df = pd.DataFrame(
+                index=adata.obs_names,
+                columns=required_columns
             )
-
-        adata.obs[self.result_key]
+            shard_size = int(settings.shard_size)
+            for i in range(0, adata.n_obs, shard_size):
+                tmp_x = test_x[i: i + shard_size]
+                names_x = adata.obs_names[i: i + shard_size]
+                tmp_x = tmp_x.todense()
+                result_df.loc[names_x, self.result_key] = adata.obs[self.labels_key].cat.categories[clf.predict(tmp_x).astype(int)]
+                if adata.uns["_return_probabilities"]:
+                    result_df.loc[names_x, self.result_key + "_probabilities"] = np.max(
+                        clf.predict_proba(tmp_x), axis=1
+                    ).astype(float)
+            adata.obs[result_df.columns] = result_df
+        else:
+            adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[clf.predict(test_x)]
+            if adata.uns["_return_probabilities"]:
+                adata.obs[self.result_key + "_probabilities"] = np.max(
+                    clf.predict_proba(test_x), axis=1
+                )
 
     def compute_embedding(self, adata):
         pass

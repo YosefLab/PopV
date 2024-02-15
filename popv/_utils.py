@@ -37,7 +37,7 @@ def subsample_dataset(
     sample_idx = []
     labels_counts = dict(adata.obs[labels_key].value_counts())
 
-    logging.info(f"Sampling {n_samples_per_label} per label")
+    logging.info(f"Sampling {n_samples_per_label} cells per label")
 
     for label in ignore_label:
         labels_counts.pop(label, None)

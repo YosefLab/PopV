@@ -20,7 +20,7 @@ class NEW_ALGORITHM:
         embedding_dict: Optional[dict] = {},
     ) -> None:
         """
-        Class to compute KNN classifier after BBKNN integration.
+        Scaffold to set up new algorithm.
 
         Parameters
         ----------

@@ -5,7 +5,7 @@ import numpy as np
 import scanpy as sc
 import scvi
 import torch
-
+from popv import settings
 
 class SCANVI_POPV:
     def __init__(
@@ -107,7 +107,7 @@ class SCANVI_POPV:
             )
 
         if adata.uns["_prediction_mode"] == "retrain":
-            if adata.uns["_pretrained_scvi_path"] is not None:
+            if adata.uns["_pretrained_scvi_path"]:
                 scvi_model = scvi.model.SCVI.load(
                     adata.uns["_save_path_trained_models"] + "/scvi", adata=adata
                 )
@@ -148,7 +148,7 @@ class SCANVI_POPV:
                 batch_size=512,
                 n_samples_per_label=20,
                 train_size=1.0,
-                use_gpu=adata.uns["_use_gpu"],
+                accelerator='gpu' if adata.uns["_use_gpu"] else 'cpu',
                 plan_kwargs={"n_steps_kl_warmup": 1},
             )
         else:
@@ -159,11 +159,11 @@ class SCANVI_POPV:
                 batch_size=512,
                 n_samples_per_label=20,
                 train_size=1.0,
-                use_gpu=adata.uns["_use_gpu"],
+                accelerator='gpu' if adata.uns["_use_gpu"] else 'cpu',
                 plan_kwargs={"n_epochs_kl_warmup": 20},
             )
         if adata.uns["_prediction_mode"] == "retrain":
-            if adata.uns["_save_path_trained_models"] is not None:
+            if adata.uns["_save_path_trained_models"]:
                 self.model.save(
                     adata.uns["_save_path_trained_models"] + "/scanvi",
                     save_anndata=False,
@@ -189,7 +189,8 @@ class SCANVI_POPV:
                 )
             )
             adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)
-            sc.pp.neighbors(adata, use_rep="X_scanvi")
+            method = 'rapids' if settings.cuml else 'umap'
+            sc.pp.neighbors(adata, use_rep="X_scanvi", method=method)
             adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, **self.embedding_dict
+                adata, copy=True, method=method, **self.embedding_dict
             ).obsm["X_umap"]

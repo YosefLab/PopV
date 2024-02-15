@@ -8,6 +8,7 @@ from pynndescent import PyNNDescentTransformer
 from scvi.model import SCVI
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+from popv import settings
 
 
 class SCVI_POPV:
@@ -87,7 +88,7 @@ class SCVI_POPV:
             "category"
         )
 
-        if adata.uns["_pretrained_scvi_path"] is None:
+        if not adata.uns["_pretrained_scvi_path"]:
             SCVI.setup_anndata(
                 adata,
                 batch_key=self.batch_key,
@@ -107,7 +108,7 @@ class SCVI_POPV:
             model.train(
                 max_epochs=self.max_epochs,
                 train_size=0.9,
-                use_gpu=adata.uns["_use_gpu"],
+                accelerator='gpu' if adata.uns["_use_gpu"] else 'cpu',
                 plan_kwargs={"n_steps_kl_warmup": 1},
             )
         else:
@@ -116,12 +117,12 @@ class SCVI_POPV:
             model.train(
                 max_epochs=round(self.max_epochs),
                 train_size=0.9,
-                use_gpu=adata.uns["_use_gpu"],
+                accelerator='gpu' if adata.uns["_use_gpu"] else 'cpu',
                 plan_kwargs={"n_epochs_kl_warmup": min(20, self.max_epochs)},
             )
 
             if (
-                adata.uns["_save_path_trained_models"] is not None
+                adata.uns["_save_path_trained_models"]
                 and adata.uns["_prediction_mode"] == "retrain"
             ):
                 # Update scvi for scanvi.
@@ -140,18 +141,23 @@ class SCVI_POPV:
         logging.info(f'Saving knn on scvi results to adata.obs["{self.result_key}"]')
 
         if adata.uns["_prediction_mode"] == "retrain":
-            ref_idx = adata.obs["_dataset"] == "ref"
+            ref_idx = adata.obs["_labelled_train_indices"]
+
             train_X = adata[ref_idx].obsm["X_scvi"]
-            train_Y = adata[ref_idx].obs[self.labels_key].to_numpy()
-            knn = make_pipeline(
-                PyNNDescentTransformer(
-                    n_neighbors=self.classifier_dict["n_neighbors"],
-                    parallel_batch_queries=True,
-                ),
-                KNeighborsClassifier(
-                    metric="precomputed", weights=self.classifier_dict["weights"]
-                ),
-            )
+            train_Y = adata.obs.loc[ref_idx, self.labels_key].cat.codes.to_numpy()
+            if settings.cuml:
+                from cuml.neighbors import KNeighborsClassifier as cuKNeighbors
+                knn = cuKNeighbors(n_neighbors=self.classifier_dict["n_neighbors"])
+            else:
+                knn = make_pipeline(
+                    PyNNDescentTransformer(
+                        n_neighbors=self.classifier_dict["n_neighbors"],
+                        parallel_batch_queries=True,
+                    ),
+                    KNeighborsClassifier(
+                        metric="precomputed", weights=self.classifier_dict["weights"]
+                    ),
+                )
             knn.fit(train_X, train_Y)
             if adata.uns["_save_path_trained_models"]:
                 pickle.dump(
@@ -173,7 +179,7 @@ class SCVI_POPV:
         knn_pred = knn.predict(adata.obsm["X_scvi"])
 
         # save_results
-        adata.obs[self.result_key] = knn_pred
+        adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[knn_pred]
         if adata.uns["_return_probabilities"]:
             adata.obs[self.result_key + "_probabilities"] = np.max(
                 knn.predict_proba(adata.obsm["X_scvi"]), axis=1
@@ -184,7 +190,8 @@ class SCVI_POPV:
             logging.info(
                 f'Saving UMAP of scvi results to adata.obs["{self.embedding_key}"]'
             )
-            sc.pp.neighbors(adata, use_rep="X_scvi")
+            method = 'rapids' if settings.cuml else 'umap'
+            sc.pp.neighbors(adata, use_rep="X_scvi", method=method)
             adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, **self.embedding_dict
+                adata, copy=True, method=method, **self.embedding_dict
             ).obsm["X_umap"]

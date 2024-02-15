@@ -1,10 +1,12 @@
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional
 
-import torch
 from rich.console import Console
 from rich.logging import RichHandler
+
+import scanpy as sc
+import scvi
 
 popv_logger = logging.getLogger("popv")
 
@@ -24,23 +26,36 @@ class Config:
     >>> import logging
     >>> popv.settings.verbosity = logging.INFO
 
-    To set the number of threads to be used
+    To set the number of jobs to be used
 
-    >>> scvi.settings.num_threads = 2
+    >>> popv.settings.n_jobs = 2
+
+    To set the number of largest dense dataset to be used
+
+    >>> popv.settings.shard_size = 200000
+
+    To enable cuml for rapid GPU based methods
+
+    >>> popv.settings.cuml = True
 
     """
 
     def __init__(
         self,
         verbosity: int = logging.WARNING,
-        seed: int = 0,
+        seed: Optional[int] = None,
         logging_dir: str = "./popv_log/",
+        n_jobs: int = 1,
+        cuml: bool = False,
+        shard_size: int = 100000
     ):
         """Set up Config manager for PopV."""
         self.seed = seed
-        self._num_threads = None
         self.logging_dir = logging_dir
         self.verbosity = verbosity
+        self.n_jobs = n_jobs
+        self.cuml = cuml
+        self.shard_size = shard_size
 
     @property
     def logging_dir(self) -> Path:
@@ -52,15 +67,35 @@ class Config:
         self._logging_dir = Path(logging_dir).resolve()
 
     @property
-    def num_threads(self) -> None:
-        """Number of threads in PyTorch."""
-        return self._num_threads
+    def n_jobs(self) -> int:
+        """Jobs used for multiprocessing."""
+        return self._n_jobs
 
-    @num_threads.setter
-    def num_threads(self, num: int):
-        """Number of threads in PyTorch."""
-        self._num_threads = num
-        torch.set_num_threads(num)
+    @n_jobs.setter
+    def n_jobs(self, n_jobs: int):
+        """Random seed for torch and numpy."""
+        sc.settings.n_jobs = n_jobs
+        self._n_jobs = n_jobs
+
+    @property
+    def cuml(self) -> int:
+        """Use RAPIDS and cuml."""
+        return self._cuml
+
+    @cuml.setter
+    def cuml(self, cuml: bool):
+        """Use RAPIDS and cuml."""
+        self._cuml = cuml
+
+    @property
+    def shard_size(self) -> int:
+        """Maximum number of cells in dense arrays."""
+        return self._shard_size
+
+    @shard_size.setter
+    def shard_size(self, shard_size: int):
+        """Maximum number of cells in dense arrays."""
+        self._shard_size = shard_size
 
     @property
     def seed(self) -> int:
@@ -70,8 +105,7 @@ class Config:
     @seed.setter
     def seed(self, seed: int):
         """Random seed for torch and numpy."""
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = False
+        scvi.settings.seed = seed
         self._seed = seed
 
     @property
@@ -82,15 +116,12 @@ class Config:
     @verbosity.setter
     def verbosity(self, level: Union[str, int]):
         """
-        Sets logging configuration for popv based on chosen level of verbosity.
-
-        If "scvi" logger has no StreamHandler, add one.
-        Else, set its level to `level`.
+        Sets logging configuration for popV based on chosen level of verbosity.
 
         Parameters
         ----------
         level
-            Sets "popv" logging level to `level`
+            Sets "popV" logging level to `level`
         force_terminal
             Rich logging option, set to False if piping to file output.
         """
@@ -108,3 +139,5 @@ class Config:
             popv_logger.addHandler(ch)
         else:
             popv_logger.setLevel(level)
+
+settings = Config()
