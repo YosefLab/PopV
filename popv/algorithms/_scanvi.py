@@ -6,7 +6,7 @@ import numpy as np
 import scanpy as sc
 import scvi
 import torch
-
+from popv import settings
 
 class SCANVI_POPV:
     def __init__(
@@ -156,7 +156,7 @@ class SCANVI_POPV:
                 plan_kwargs={"n_epochs_kl_warmup": 20},
             )
         if adata.uns["_prediction_mode"] == "retrain":
-            if adata.uns["_save_path_trained_models"] is not None:
+            if adata.uns["_save_path_trained_models"]:
                 self.model.save(
                     adata.uns["_save_path_trained_models"] + "/scanvi",
                     save_anndata=False,
@@ -174,5 +174,8 @@ class SCANVI_POPV:
         if adata.uns["_compute_embedding"]:
             logging.info(f'Saving UMAP of scanvi results to adata.obs["{self.embedding_key}"]')
             adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)
-            sc.pp.neighbors(adata, use_rep="X_scanvi")
-            adata.obsm[self.embedding_key] = sc.tl.umap(adata, copy=True, **self.embedding_dict).obsm["X_umap"]
+            method = 'rapids' if settings.cuml else 'umap'
+            sc.pp.neighbors(adata, use_rep="X_scanvi", method=method)
+            adata.obsm[self.embedding_key] = sc.tl.umap(
+                adata, copy=True, method=method, **self.embedding_dict
+            ).obsm["X_umap"]
