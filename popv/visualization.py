@@ -186,11 +186,11 @@ def celltype_ratio_bar_plot(
         prop.loc[x, "query"] = np.sum(labels[is_query] == x)
         prop.loc[x, "ref"] = np.sum(labels[~is_query] == x)
     if normalize:
-        prop = prop.div(prop.sum(axis=1))
+        prop = prop.div(prop.sum(axis=0), axis=1)
 
-    ax = prop.loc[cell_types].plot(kind="bar", figsize=(len(cell_types) * 0.5, 4), logy=True)
+    ax = prop.loc[cell_types].plot(kind="bar", figsize=(len(cell_types) * 0.5, 4), logy=(not normalize))
     ax.set_ylabel("Celltype")
-    ax.set_ylabel("log Celltype Abundance")
+    ax.set_ylabel("Celltype Abundance")
     if save_folder is not None:
         save_path = os.path.join(save_folder, "celltype_prop_barplot.pdf")
         ax.get_figure().savefig(save_path, bbox_inches="tight", dpi=300)
