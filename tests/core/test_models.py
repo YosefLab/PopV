@@ -48,7 +48,7 @@ def _get_test_anndata(cl_obo_folder="resources/ontology/"):
         n_samples_per_label=n_samples_per_label,
         compute_embedding=True,
         return_probabilities=True,
-        accelerator=popv.settings.cuml,
+        accelerator="cuda" if popv.settings.cuml else "cpu",
         devices="auto",
         hvg=4000,
     )
@@ -216,8 +216,9 @@ def test_annotation_cuml():
     popv.settings.shard_size = 200000
     adata = _get_test_anndata().adata
     popv.annotation.annotate_data(
-        adata, methods=["svm", "rf"],
+        adata, methods_kwargs={"knn_on_scvi": {"max_epochs": 3}, "scanvi": {"n_epochs_unsupervised": 5}},
         save_path="tests/tmp_testing/popv_test_results/")
+
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
     popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])
