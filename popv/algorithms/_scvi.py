@@ -108,7 +108,8 @@ class SCVI_POPV:
             model.train(
                 max_epochs=self.max_epochs,
                 train_size=0.9,
-                accelerator='gpu' if adata.uns["_use_gpu"] else 'cpu',
+                accelerator=adata.uns["_accelerator"],
+                devices=adata.uns["_devices"],
                 plan_kwargs={"n_steps_kl_warmup": 1},
             )
         else:
@@ -117,7 +118,8 @@ class SCVI_POPV:
             model.train(
                 max_epochs=round(self.max_epochs),
                 train_size=0.9,
-                accelerator='gpu' if adata.uns["_use_gpu"] else 'cpu',
+                accelerator=adata.uns["_accelerator"],
+                devices=adata.uns["_devices"],
                 plan_kwargs={"n_epochs_kl_warmup": min(20, self.max_epochs)},
             )
 

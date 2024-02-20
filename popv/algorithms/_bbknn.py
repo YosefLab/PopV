@@ -64,11 +64,13 @@ class BBKNN:
             self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
+        if adata.obs[self.batch_key].value_counts().min() < 12:
+            logging.warning("Disabling pynndescent in BBKNN as some batches have less than 11 cells.")
+            self.method_dict['use_annoy'] = True
         logging.info("Integrating data with bbknn")
         if len(adata.obs[self.batch_key].unique()) > 100 and self.enable_cuml:
             logging.warning('Using PyNNDescent instead of RAPIDS as high number of batches leads to OOM.')
             self.method_dict['approx'] = True
-        print(self.method_dict)
         sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_dict)
 
     def predict(self, adata):

@@ -58,7 +58,8 @@ class SCANORAMA:
         self.embedding_dict = {
             "min_dist": 0.1,
         }
-        self.embedding_dict.update(embedding_dict)
+        if embedding_dict is not None:
+            self.embedding_dict.update(embedding_dict)
 
     def compute_integration(self, adata):
         logging.info("Integrating data with scanorama")

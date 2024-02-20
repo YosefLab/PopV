@@ -216,14 +216,14 @@ class Process_Query:
                     f"{self.cl_obo_file} doesn't exist. Check that folder exists."
                 ) from FileNotFoundError
 
-        self.setup_dataset(self.query_adata, "query")
-        self.check_validity_anndata(self.query_adata, "query")
-        self.setup_dataset(self.query_adata, "query", add_meta="_query")
+        self._setup_dataset(self.query_adata, "query")
+        self._check_validity_anndata(self.query_adata, "query")
+        self._setup_dataset(self.query_adata, "query", add_meta="_query")
 
         if self.prediction_mode != "fast":
             self.ref_adata = ref_adata[:, self.genes].copy()
-            self.setup_dataset(self.ref_adata, "reference")
-            self.check_validity_anndata(self.ref_adata, "reference")
+            self._setup_dataset(self.ref_adata, "reference")
+            self._check_validity_anndata(self.ref_adata, "reference")
 
         self._preprocess()
 
@@ -265,8 +265,7 @@ class Process_Query:
         else:
             adata.obs["_ref_subsample"] = False
 
-    def preprocess(self):
-        """Preprocess the query and reference dataset and concatenate both."""
+    def _preprocess(self):
         if self.prediction_mode == "fast":
             self.adata = self.query_adata
             self.adata.obs["_dataset"] = "query"
