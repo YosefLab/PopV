@@ -193,7 +193,7 @@ class AlluvialTool:
                             b_item,
                         ]
                     ]
-        return np.array(alluvial_fan)
+        return np.array(alluvial_fan, dtype=object)
 
     def plot(self, figsize=(10, 15), alpha=0.5, **kwargs):
         colors = self.get_color_array(**kwargs)
