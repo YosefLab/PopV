@@ -202,6 +202,7 @@ def make_agreement_plots(
     prediction_keys: list,
     popv_prediction_key: str | None = "popv_prediction",
     save_folder: str | None = None,
+    show: bool = True,
 ):
     """
     Create plot of confusion matrix for different popv methods and consensus prediction.
@@ -216,6 +217,8 @@ def make_agreement_plots(
         Key in adata.obs for consensus prediction.
     save_folder
         Path to a folder for storing the plot. Defaults to None and plot is not stored.
+    show
+        If True, the plot will be shown in the console. If False, the plot will not be shown.
 
     Returns
     -------
@@ -237,6 +240,7 @@ def make_agreement_plots(
             x_label=method,
             y_label=popv_prediction_key,
             res_dir=save_folder,
+            show=show,
         )
 
 
@@ -247,6 +251,7 @@ def _prediction_eval(
     x_label="",
     y_label="",
     res_dir="./",
+    show=True,
 ):
     """Generate confusion matrix."""
     types, _ = np.unique(np.concatenate([labels, pred]), return_inverse=True)
@@ -266,4 +271,5 @@ def _prediction_eval(
         for fig in range(1, plt.gcf().number + 1):
             pdf.savefig(fig)
         pdf.close()
-    plt.show()
+    if show:
+        plt.show()

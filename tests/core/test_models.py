@@ -10,7 +10,7 @@ from popv.preprocessing import Process_Query
 from popv.reproducibility import _accuracy
 
 
-def _get_test_anndata(cl_obo_folder="resources/ontology/"):
+def _get_test_anndata(cl_obo_folder="resources/ontology/", mode='retrain'):
     print("UUU", os.getcwd())
     save_folder = "tests/tmp_testing/popv_test_results/"
     fn = save_folder + "annotated_query.h5ad"
@@ -34,6 +34,8 @@ def _get_test_anndata(cl_obo_folder="resources/ontology/"):
     # Lesser used parameters
     query_labels_key = None
     unknown_celltype_label = "unknown"
+    hvg = 4000 if mode == "retrain" else None
+
     adata = Process_Query(
         query_adata,
         ref_adata,
@@ -44,13 +46,13 @@ def _get_test_anndata(cl_obo_folder="resources/ontology/"):
         unknown_celltype_label=unknown_celltype_label,
         save_path_trained_models=save_folder,
         cl_obo_folder=cl_obo_folder,
-        prediction_mode="retrain",
+        prediction_mode=mode,
         n_samples_per_label=n_samples_per_label,
         compute_embedding=True,
         return_probabilities=True,
         accelerator="cpu",
         devices="auto",
-        hvg=4000,
+        hvg=hvg,
     )
 
     return adata
@@ -183,7 +185,7 @@ def test_annotation():
         save_path="tests/tmp_testing/popv_test_results/")
     popv.visualization.agreement_score_bar_plot(adata)
     popv.visualization.prediction_score_bar_plot(adata)
-    popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"])
+    popv.visualization.make_agreement_plots(adata, prediction_keys=adata.uns["prediction_keys"], show=False)
     popv.visualization.celltype_ratio_bar_plot(adata)
     obo_fn = "resources/ontology/cl.obo"
     _accuracy._ontology_accuracy(adata[adata.obs['_dataset']=='ref'], obofile=obo_fn, gt_key='cell_ontology_class', pred_key='popv_prediction')
@@ -191,6 +193,15 @@ def test_annotation():
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
+
+    adata = _get_test_anndata(mode='inference').adata
+    popv.annotation.annotate_data(
+        adata, save_path="tests/tmp_testing/popv_test_results/")
+
+    adata = _get_test_anndata(mode='fast').adata
+    popv.annotation.annotate_data(
+        adata, methods=["svm", "rf"],
+        save_path="tests/tmp_testing/popv_test_results/")
 
 
 def test_annotation_no_ontology():
