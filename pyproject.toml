@@ -2,18 +2,12 @@
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
-[tool.hatch.build.targets.wheel]
-exclude = ["resources/*", "tests/*", "dataset/*"]
-
-[tool.hatch.build.targets.sdist]
-exclude = ["resources/*", "tests/*", "dataset/*"]
-
 [project]
 name = "PopV"
 version = "0.4.2"
 description = "Consensus prediction of cell type labels with popV"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.9, <3.12"
 license = {file = "LICENSE"}
 authors = [
     {name = "Can Ergen"},
@@ -24,7 +18,18 @@ maintainers = [
 urls.Documentation = "https://PopV.readthedocs.io/"
 urls.Source = "https://github.com/YosefLab/PopV.git"
 urls.Home-page = "https://github.com/YosefLab/PopV.git"
-
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Operating System :: MacOS :: MacOS X",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 dependencies = [
     "anndata>0.8.0",
     "pandas<2.0.0,>=1.4.0",
@@ -33,6 +38,7 @@ dependencies = [
     "gdown>4.6.0",
     "h5py>3.7.0",
     "huggingface-hub>=0.11.1",
+    "louvain",
     "onclass>=1.3",
     "scanorama>1.7.2",
     "scanpy>1.9.0",
@@ -49,6 +55,12 @@ dependencies = [
 dev = [
     "pre-commit",
     "twine>=4.0.2"
+]
+cuml = [
+    "faiss-gpu",
+    "cudf-cu12",
+    "cuml-cu12",
+    "cugraph-cu12"
 ]
 doc = [
     "docutils>=0.8,!=0.18.*,!=0.19.*",
@@ -69,25 +81,52 @@ test = [
     "coverage",
 ]
 
+[tool.hatch.build.targets.wheel]
+packages = ['popv']
+
 [tool.coverage.run]
 source = ["popv"]
 omit = [
     "**/test_*.py",
+    "**/*.ipynb",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 xfail_strict = true
-addopts = [
-    "--import-mode=importlib",  # allow using test files with same name
-]
-
-[tool.black]
-line-length = 120
 
 [tool.ruff]
-src = ["src"]
+src = ["."]
 line-length = 120
+indent-width = 4
+target-version = "py39"
+
+# Exclude a variety of commonly ignored directories.
+exclude = [
+    ".bzr",
+    ".direnv",
+    ".eggs",
+    ".git",
+    ".git-rewrite",
+    ".hg",
+    ".mypy_cache",
+    ".nox",
+    ".pants.d",
+    ".pytype",
+    ".ruff_cache",
+    ".svn",
+    ".tox",
+    ".venv",
+    "__pypackages__",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+    "node_modules",
+    "venv",
+]
+
+[tool.ruff.lint]
 select = [
     "F",  # Errors detected by Pyflakes
     "E",  # Error detected by Pycodestyle
@@ -129,22 +168,27 @@ ignore = [
     "D213",
 ]
 
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+
+# Like Black, automatically detect the appropriate line ending.
+line-ending = "auto"
+
 [tool.ruff.pydocstyle]
 convention = "numpy"
 
 [tool.ruff.per-file-ignores]
-"docs/*" = ["I"]
+"docs/*" = ["I", "BLE001"]
 "tests/*" = ["D"]
 "*/__init__.py" = ["F401"]
+"popv/__init__.py" = ["I"]
 
-[tool.cruft]
-skip = [
-    "tests",
-    "src/**/__init__.py",
-    "src/**/basic.py",
-    "docs/api.md",
-    "docs/changelog.md",
-    "docs/references.bib",
-    "docs/references.md",
-    "docs/notebooks/example.ipynb"
-]
+[tool.jupytext]
+formats = "ipynb,md"

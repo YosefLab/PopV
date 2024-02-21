@@ -11,6 +11,7 @@ import torch
 from scanpy._utils import check_nonnegative_integers
 
 from popv import _utils
+from popv import settings
 
 
 class Process_Query:
@@ -95,7 +96,7 @@ class Process_Query:
         self.unknown_celltype_label = unknown_celltype_label
         self.batch_key = {"reference": ref_batch_key, "query": query_batch_key}
 
-        if pretrained_scvi_path is None and prediction_mode != "retrain":
+        if pretrained_scvi_path and prediction_mode != "retrain":
             self.pretrained_scvi_path = save_path_trained_models + "/scvi/"
         else:
             self.pretrained_scvi_path = pretrained_scvi_path
@@ -111,12 +112,13 @@ class Process_Query:
         self.return_probabilities = return_probabilities
         self.genes = None
         if self.prediction_mode == "fast":
+            assert self.pretrained_scvi_path, 'Fast mode requires a pretrained scvi model.'
             self.genes = torch.load(
                 self.pretrained_scvi_path + "model.pt",
                 map_location="cpu",
             )["var_names"]
         else:
-            if self.pretrained_scvi_path is not None:
+            if self.pretrained_scvi_path:
                 pretrained_scvi_genes = torch.load(
                     self.pretrained_scvi_path + "model.pt",
                     map_location="cpu",
@@ -149,12 +151,29 @@ class Process_Query:
             self.query_adata = query_adata[:, self.genes].copy()
             assert hvg is None, "Highly variable gene selection is not available if using trained reference model."
         else:
-            self.query_adata = query_adata.copy()
+            gene_intersection = np.intersect1d(ref_adata.var_names, query_adata.var_names)
+            if hvg is not None and len(gene_intersection) > hvg:
+                expressed_genes, _ = sc.pp.filter_genes(
+                    query_adata[:, gene_intersection], min_cells=200, inplace=False)
+                subset_genes = gene_intersection[expressed_genes]
+                highly_variable_genes = sc.pp.highly_variable_genes(
+                    query_adata[:, subset_genes].copy(),
+                    n_top_genes=hvg,
+                    subset=False,
+                    flavor="seurat_v3",
+                    inplace=False,
+                    layer=query_layers_key,
+                    batch_key=query_batch_key,
+                    span=1.0,
+                )["highly_variable"]
+                self.genes = query_adata[:, subset_genes].var_names[highly_variable_genes]
+            else:
+                self.genes = gene_intersection
+        self.query_adata = query_adata[:, self.genes].copy()
         if query_layers_key is not None:
             self.query_adata.X = self.query_adata.layers[query_layers_key].copy()
 
         self.validity_checked = False
-        self.hvg = hvg
         self.accelerator = accelerator
         self.devices = devices
         if self.prediction_mode == "fast":
@@ -197,14 +216,12 @@ class Process_Query:
                     f"{self.cl_obo_file} doesn't exist. Check that folder exists."
                 ) from FileNotFoundError
 
+        self._setup_dataset(self.query_adata, "query")
         self._check_validity_anndata(self.query_adata, "query")
         self._setup_dataset(self.query_adata, "query", add_meta="_query")
 
         if self.prediction_mode != "fast":
-            if self.genes:
-                self.ref_adata = ref_adata[:, self.genes].copy()
-            else:
-                self.ref_adata = ref_adata.copy()
+            self.ref_adata = ref_adata[:, self.genes].copy()
             self._setup_dataset(self.ref_adata, "reference")
             self._check_validity_anndata(self.ref_adata, "reference")
 
@@ -249,10 +266,6 @@ class Process_Query:
             adata.obs["_ref_subsample"] = False
 
     def _preprocess(self):
-        if self.genes is None:
-            self.ref_adata = self.ref_adata[:, np.intersect1d(self.ref_adata.var_names, self.query_adata.var_names)]
-            self.query_adata = self.query_adata[:, np.intersect1d(self.ref_adata.var_names, self.query_adata.var_names)]
-
         if self.prediction_mode == "fast":
             self.adata = self.query_adata
             self.adata.obs["_dataset"] = "query"
@@ -265,6 +278,10 @@ class Process_Query:
                 join="outer",
                 fill_value=self.unknown_celltype_label,
             )
+        del self.query_adata, self.ref_adata
+        self.adata.obs["_labelled_train_indices"] = np.logical_and(
+            self.adata.obs["_dataset"]=="ref",
+            self.adata.obs["_labels_annotation"]!=self.unknown_celltype_label)
 
         if self.prediction_mode != "fast":
             # Necessary for BBKNN.
@@ -275,16 +292,17 @@ class Process_Query:
                     .value_counts()[self.adata.obs["_batch_annotation"].value_counts() > 8]
                     .index
                 )
-            ].copy()
-            difference_batches = set(self.adata.obs["_batch_annotation"]) - batch_before_filtering
+            ]
+            difference_batches = (
+                set(self.adata.obs["_batch_annotation"]) - batch_before_filtering
+            )
             if difference_batches:
                 logging.warning(
                     f"The following batches will be excluded from annotation because they have less than 9 cells:{difference_batches}."
                 )
 
             # Sort data based on batch for efficiency downstream during SCANORAMA
-            self.adata = self.adata[self.adata.obs.sort_values(by="_batch_annotation").index].copy()
-
+            self.adata = self.adata[self.adata.obs.sort_values(by="_batch_annotation").index]
             self.adata.obs[self.labels_key["reference"]] = self.adata.obs[self.labels_key["reference"]].astype(
                 "category"
             )
@@ -297,32 +315,7 @@ class Process_Query:
             logging.warning(
                 f"The following cells will be excluded from annotation because they have low expression:{zero_cell_names}."
             )
-
         self.adata.layers["scvi_counts"] = self.adata.X.copy()
-
-        if self.hvg is not None and self.adata.n_vars > self.hvg:
-            sc.pp.filter_genes(self.adata, min_counts=20, inplace=True)
-            try:
-                self.adata.var["highly_variable"] = sc.pp.highly_variable_genes(
-                    self.adata[self.adata.obs["_dataset"] == "ref"].copy(),
-                    n_top_genes=self.hvg,
-                    subset=False,
-                    layer="scvi_counts",
-                    flavor="seurat_v3",
-                    inplace=False,
-                    batch_key="_batch_annotation",
-                )["highly_variable"]
-            except ValueError:  # seurat_v3 tends to error with singularities then use Poisson hvg.
-                self.adata.var["highly_variable"] = sc.experimental.pp.highly_variable_genes(
-                    self.adata[self.adata.obs["_dataset"] == "ref"].copy(),
-                    n_top_genes=self.hvg,
-                    subset=False,
-                    layer="scvi_counts",
-                    flavor="pearson_residuals",
-                    inplace=False,
-                    batch_key="_batch_annotation",
-                )["highly_variable"]
-            self.adata = self.adata[:, self.adata.var["highly_variable"]].copy()
 
         sc.pp.normalize_total(self.adata, target_sum=1e4)
         sc.pp.log1p(self.adata)
@@ -331,6 +324,7 @@ class Process_Query:
             sc.pp.scale(self.adata, max_value=10, zero_center=False, layer="scaled_counts")
             self.adata.obsm["X_pca"] = sc.tl.pca(self.adata.layers["scaled_counts"])
 
+        self.adata.obs["_labels_annotation"] = self.adata.obs["_labels_annotation"].astype('category')
         # Store values as default for current popv in adata
         self.adata.uns["unknown_celltype_label"] = self.unknown_celltype_label
         self.adata.uns["_pretrained_scvi_path"] = self.pretrained_scvi_path

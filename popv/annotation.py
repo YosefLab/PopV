@@ -13,6 +13,7 @@ import anndata
 import networkx as nx
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from popv import _utils, algorithms
 
@@ -57,7 +58,8 @@ def annotate_data(
 
     all_prediction_keys = []
     all_prediction_keys_seen = []
-    for method in methods:
+
+    for method in tqdm(methods):
         current_method = getattr(algorithms, method)(**methods_kwargs.pop(method, {}))
         current_method.compute_integration(adata)
         current_method.predict(adata)
