@@ -88,6 +88,7 @@ packages = ['popv']
 source = ["popv"]
 omit = [
     "**/test_*.py",
+    "**/*.ipynb",
 ]
 
 [tool.pytest.ini_options]
