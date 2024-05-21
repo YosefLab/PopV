@@ -19,6 +19,7 @@ __pycache__/
 /.pytest_cache/
 /.cache/
 /data/
+/node_modules/
 
 # docs
 /docs/generated/
