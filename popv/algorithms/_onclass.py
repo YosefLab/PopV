@@ -179,7 +179,7 @@ class ONCLASS:
             pred_label = [train_model.i2co[ind] for ind in onclass_seen]
             pred_label_str = [clid_2_name[ind] for ind in pred_label]
             adata.obs[self.result_key] = pred_label_str
-            adata.obs["onclass_seen"] = pred_label_str
+            adata.obs[self.seen_result_key] = pred_label_str
         else:
             onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.0)
             pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]

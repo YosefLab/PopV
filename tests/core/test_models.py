@@ -200,8 +200,7 @@ def test_annotation():
 
     adata = _get_test_anndata(mode='fast').adata
     popv.annotation.annotate_data(
-        adata, methods=["svm", "rf"],
-        save_path="tests/tmp_testing/popv_test_results/")
+        adata, save_path="tests/tmp_testing/popv_test_results/")
 
 
 def test_annotation_no_ontology():
