@@ -4,8 +4,10 @@ from os.path import exists
 
 import anndata
 import numpy as np
-import popv
+import pytest
 import scanpy as sc
+
+import popv
 from popv.preprocessing import Process_Query
 from popv.reproducibility import _accuracy
 
@@ -210,6 +212,7 @@ def test_annotation_no_ontology():
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
 
+@pytest.mark.cuda
 def test_annotation_cuml():
     """Test Annotation and Plotting pipeline."""
     popv.settings.cuml = True
@@ -230,16 +233,3 @@ def test_annotation_cuml():
 
     assert "popv_majority_vote_prediction" in adata.obs.columns
     assert not adata.obs["popv_majority_vote_prediction"].isnull().any()
-
-
-if __name__ == "__main__":
-    test_bbknn()
-    test_onclass()
-    test_rf()
-    test_scanorama()
-    test_scanvi()
-    test_scvi()
-    test_svm()
-    test_annotation()
-    test_annotation_no_ontology()
-    test_annotation_cuml()

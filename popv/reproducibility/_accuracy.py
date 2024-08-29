@@ -1,4 +1,5 @@
 import networkx as nx
+
 from popv import _utils
 
 

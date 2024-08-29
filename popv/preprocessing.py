@@ -11,7 +11,6 @@ import torch
 from scanpy._utils import check_nonnegative_integers
 
 from popv import _utils
-from popv import settings
 
 
 class Process_Query:

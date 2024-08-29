@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import scanpy as sc
 from sklearn.neighbors import KNeighborsClassifier
+
 from popv import settings
 
 

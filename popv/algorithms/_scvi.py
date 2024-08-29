@@ -9,6 +9,7 @@ from pynndescent import PyNNDescentTransformer
 from scvi.model import SCVI
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+
 from popv import settings
 
 

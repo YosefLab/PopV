@@ -6,7 +6,9 @@ import numpy as np
 import scanpy as sc
 import scvi
 import torch
+
 from popv import settings
+
 
 class SCANVI_POPV:
     def __init__(

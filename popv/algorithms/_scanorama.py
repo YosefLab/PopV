@@ -9,7 +9,9 @@ import scanpy as sc
 from pynndescent import PyNNDescentTransformer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+
 from popv import settings
+
 
 class SCANORAMA:
     def __init__(

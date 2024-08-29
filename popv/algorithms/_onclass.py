@@ -4,9 +4,10 @@ import logging
 
 import numpy as np
 import obonet
-import scipy
 import pandas as pd
+import scipy
 from OnClass.OnClassModel import OnClassModel
+
 from popv import settings
 
 

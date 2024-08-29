@@ -4,7 +4,10 @@ import logging
 
 import celltypist
 import scanpy as sc
+
 from popv import settings
+
+
 class CELLTYPIST:
     def __init__(
         self,

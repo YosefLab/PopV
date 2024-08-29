@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import logging
 import pickle
-from ast import Pass
-from typing import Optional
-import pandas as pd
-import scipy.sparse as scp
 
 import numpy as np
+import pandas as pd
+import scipy.sparse as scp
 from sklearn.ensemble import RandomForestClassifier
+
 from popv import settings
 
 
