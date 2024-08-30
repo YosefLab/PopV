@@ -102,7 +102,7 @@ class AlluvialTool:
         return self.input
 
     def read_input(self):
-        if type(self.input) == dict:
+        if isinstance(self.input, dict):
             return self.read_input_from_dict()
         else:
             return self.read_input_from_list()
@@ -119,7 +119,7 @@ class AlluvialTool:
         _ = kwargs
         a_members = (
             sorted(
-                {a_item for a_item in self.data_dic},
+                set(self.data_dic),
                 key=lambda x: self.item_widths_dic[x],
             )
             if not a_sort
@@ -325,7 +325,7 @@ class AlluvialTool:
         # f_item = bidi.algorithm.get_display(item)  # for RTL languages
         tal = "<" if f_item == item else ">"
         if not disp_width:
-            ans = ("{:%s}" % tal).format(item)
+            ans = (f"{{:{tal}}}").format(item)
         else:
             width = self.item_coord_dic[item].get_width()
             if side and width_in or (not side and not width_in):

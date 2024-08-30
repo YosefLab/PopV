@@ -1,22 +1,25 @@
+from __future__ import annotations
+
 import logging
-from typing import Optional
 
 import numpy as np
 import scanpy as sc
 from sklearn.neighbors import KNeighborsClassifier
+
 from popv import settings
+from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
-class BBKNN:
+class BBKNN(BaseAlgorithm):
     def __init__(
         self,
-        batch_key: Optional[str] = "_batch_annotation",
-        labels_key: Optional[str] = "_labels_annotation",
-        result_key: Optional[str] = "popv_knn_on_bbknn_prediction",
-        embedding_key: Optional[str] = "X_bbknn_umap_popv",
-        method_dict: Optional[dict] = {},
-        classifier_dict: Optional[dict] = {},
-        embedding_dict: Optional[dict] = {},
+        batch_key: str | None = "_batch_annotation",
+        labels_key: str | None = "_labels_annotation",
+        result_key: str | None = "popv_knn_on_bbknn_prediction",
+        embedding_key: str | None = "X_bbknn_umap_popv",
+        method_dict: dict | None = None,
+        classifier_dict: dict | None = None,
+        embedding_kwargs: dict | None = None,
     ) -> None:
         """
         Class to compute KNN classifier after BBKNN integration.
@@ -35,14 +38,21 @@ class BBKNN:
             Additional parameters for BBKNN. Options at sc.external.pp.bbknn
         classifier_dict
             Dictionary to supply non-default values for KNN classifier. Options at sklearn.neighbors.KNeighborsClassifier
-        embedding_dict
+        embedding_kwargs
             Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
         """
-        self.batch_key = batch_key
-        self.labels_key = labels_key
-        self.result_key = result_key
-        self.embedding_key = embedding_key
-        self.enable_cuml = settings.cuml
+        super().__init__(
+            batch_key=batch_key,
+            labels_key=labels_key,
+            result_key=result_key,
+            embedding_key=embedding_key,
+        )
+        if embedding_kwargs is None:
+            embedding_kwargs = {}
+        if classifier_dict is None:
+            classifier_dict = {}
+        if method_dict is None:
+            method_dict = {}
 
         self.method_dict = {
             "metric": "euclidean" if self.enable_cuml else "cosine",
@@ -56,19 +66,18 @@ class BBKNN:
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         self.classifier_dict.update(classifier_dict)
 
-        self.embedding_dict = {
+        self.embedding_kwargs = {
             "min_dist": 0.1}
-        self.embedding_dict.update(embedding_dict)
+        self.embedding_kwargs.update(embedding_kwargs)
 
-    def compute_integration(self, adata):
+    def _compute_integration(self, adata):
         logging.info("Integrating data with bbknn")
         if len(adata.obs[self.batch_key].unique()) > 100 and self.enable_cuml:
             logging.warning('Using PyNNDescent instead of RAPIDS as high number of batches leads to OOM.')
             self.method_dict['approx'] = True
-        print(self.method_dict)
         sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_dict)
 
-    def predict(self, adata):
+    def _predict(self, adata):
         logging.info(f'Saving knn on bbknn results to adata.obs["{self.result_key}"]')
 
         distances = adata.obsp["distances"]
@@ -100,13 +109,13 @@ class BBKNN:
 
         adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[knn.predict(test_distances)]
 
-        if adata.uns["_return_probabilities"]:
+        if self.return_probabilities:
             adata.obs[self.result_key + "_probabilities"] = np.max(
                 knn.predict_proba(test_distances), axis=1
             )
 
-    def compute_embedding(self, adata):
-        if adata.uns["_compute_embedding"]:
+    def _compute_embedding(self, adata):
+        if self.compute_embedding:
             logging.info(
                 f'Saving UMAP of bbknn results to adata.obs["{self.embedding_key}"]'
             )
@@ -117,5 +126,5 @@ class BBKNN:
                 method = 'umap'
                 # RAPIDS not possible here as number of batches drastically increases GPU RAM.
             adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, method=method, **self.embedding_dict
+                adata, copy=True, method=method, **self.embedding_kwargs
             ).obsm["X_umap"]

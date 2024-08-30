@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import logging
 import pickle
-from typing import Optional
 
 import numpy as np
 import scanpy as sc
@@ -8,21 +9,23 @@ from pynndescent import PyNNDescentTransformer
 from scvi.model import SCVI
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
+
 from popv import settings
+from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
-class SCVI_POPV:
+class SCVI_POPV(BaseAlgorithm):
     def __init__(
         self,
-        batch_key: Optional[str] = "_batch_annotation",
-        labels_key: Optional[str] = "_labels_annotation",
-        max_epochs: Optional[int] = None,
-        save_folder: Optional[str] = None,
-        result_key: Optional[str] = "popv_knn_on_scvi_prediction",
-        embedding_key: Optional[str] = "X_scvi_umap_popv",
-        model_kwargs: Optional[dict] = {},
-        classifier_dict: Optional[dict] = {},
-        embedding_dict: Optional[dict] = {},
+        batch_key: str | None = "_batch_annotation",
+        labels_key: str | None = "_labels_annotation",
+        save_folder: str | None = None,
+        result_key: str | None = "popv_knn_on_scvi_prediction",
+        embedding_key: str | None = "X_scvi_umap_popv",
+        model_kwargs: dict | None = None,
+        classifier_dict: dict | None = None,
+        embedding_dict: dict | None = None,
+        train_kwargs: dict | None = None,
     ) -> None:
         """
         Class to compute KNN classifier after scVI integration.
@@ -45,13 +48,21 @@ class SCVI_POPV:
             Dictionary to supply non-default values for KNN classifier. n_neighbors and weights supported.
         embedding_dict
             Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
+        train_kwargs
+            Dictionary to supply non-default values for training scvi. Options at scvi.model.SCVI.train
         """
-        self.batch_key = batch_key
-        self.labels_key = labels_key
-        self.result_key = result_key
-        self.embedding_key = embedding_key
-
-        self.max_epochs = max_epochs
+        super().__init__(
+            batch_key=batch_key,
+            labels_key=labels_key,
+            result_key=result_key,
+            embedding_key=embedding_key,
+        )
+        if embedding_dict is None:
+            embedding_dict = {}
+        if classifier_dict is None:
+            classifier_dict = {}
+        if model_kwargs is None:
+            model_kwargs = {}
         self.save_folder = save_folder
 
         self.model_kwargs = {
@@ -70,10 +81,20 @@ class SCVI_POPV:
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         self.classifier_dict.update(classifier_dict)
 
+        self.train_kwargs = {
+            "max_epochs": 20,
+            "batch_size": 512,
+            "train_size": 1.0,
+            "accelerator": settings.accelerator,
+            "plan_kwargs" : {"n_epochs_kl_warmup": 20}
+        }
+        self.train_kwargs.update(train_kwargs)
+        self.max_epochs = train_kwargs.get("max_epochs", None)
+
         self.embedding_dict = {"min_dist": 0.3}
         self.embedding_dict.update(embedding_dict)
 
-    def compute_integration(self, adata):
+    def _compute_integration(self, adata):
         logging.info("Integrating data with scvi")
 
         # Go through obs field with subsampling information and subsample label information.
@@ -104,21 +125,15 @@ class SCVI_POPV:
 
         if adata.uns["_prediction_mode"] == "fast":
             if self.max_epochs is None:
-                self.max_epochs = 1
+                self.train_kwargs['max_epochs'] = 1
             model.train(
-                max_epochs=self.max_epochs,
-                train_size=0.9,
-                accelerator='gpu' if adata.uns["_use_gpu"] else 'cpu',
-                plan_kwargs={"n_steps_kl_warmup": 1},
+                **self.train_kwargs
             )
         else:
             if self.max_epochs is None:
                 self.max_epochs = min(round((20000 / adata.n_obs) * 200), 200)
             model.train(
-                max_epochs=round(self.max_epochs),
-                train_size=0.9,
-                accelerator='gpu' if adata.uns["_use_gpu"] else 'cpu',
-                plan_kwargs={"n_epochs_kl_warmup": min(20, self.max_epochs)},
+                **self.train_kwargs
             )
 
             if (
@@ -137,7 +152,7 @@ class SCVI_POPV:
 
         adata.obsm["X_scvi"] = model.get_latent_representation(adata)
 
-    def predict(self, adata):
+    def _predict(self, adata):
         logging.info(f'Saving knn on scvi results to adata.obs["{self.result_key}"]')
 
         if adata.uns["_prediction_mode"] == "retrain":
@@ -180,13 +195,13 @@ class SCVI_POPV:
 
         # save_results
         adata.obs[self.result_key] = adata.obs[self.labels_key].cat.categories[knn_pred]
-        if adata.uns["_return_probabilities"]:
+        if self.return_probabilities:
             adata.obs[self.result_key + "_probabilities"] = np.max(
                 knn.predict_proba(adata.obsm["X_scvi"]), axis=1
             )
 
-    def compute_embedding(self, adata):
-        if adata.uns["_compute_embedding"]:
+    def _compute_embedding(self, adata):
+        if self.compute_embedding:
             logging.info(
                 f'Saving UMAP of scvi results to adata.obs["{self.embedding_key}"]'
             )

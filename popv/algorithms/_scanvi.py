@@ -1,64 +1,69 @@
+from __future__ import annotations
+
 import logging
-from typing import Optional
 
 import numpy as np
 import scanpy as sc
 import scvi
 import torch
-from popv import settings
 
-class SCANVI_POPV:
+from popv import settings
+from popv.algorithms._base_algorithm import BaseAlgorithm
+
+
+class SCANVI_POPV(BaseAlgorithm):
+    """
+    Class to compute classifier in scANVI model and predict labels.
+
+    Parameters
+    ----------
+    batch_key
+        Key in obs field of adata for batch information.
+    labels_key
+        Key in obs field of adata for cell-type information.
+    result_key
+        Key in obs in which celltype annotation results are stored.
+    embedding_key
+        Key in obsm in which UMAP embedding of integrated data is stored.
+    model_kwargs
+        Dictionary to supply non-default values for SCVI model. Options at scvi.model.SCVI
+    classifier_kwargs
+        Dictionary to supply non-default values for SCANVI classifier.
+        Options at classifier_paramerers in scvi.model.SCANVI.from_scvi_model.
+    embedding_kwargs
+        Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
+    train_kwargs
+        Dictionary to supply non-default values for training scvi. Options at scvi.model.SCVI.train
+    """
+
     def __init__(
         self,
-        batch_key: Optional[str] = "_batch_annotation",
-        labels_key: Optional[str] = "_labels_annotation",
-        n_epochs_unsupervised: Optional[int] = None,
-        n_epochs_semisupervised: Optional[int] = None,
-        use_gpu: Optional[bool] = False,
-        save_folder: Optional[str] = None,
-        result_key: Optional[str] = "popv_scanvi_prediction",
-        embedding_key: Optional[str] = "X_scanvi_umap_popv",
-        model_kwargs: Optional[dict] = {},
-        classifier_kwargs: Optional[dict] = {},
-        embedding_dict: Optional[dict] = {},
+        batch_key: str | None = "_batch_annotation",
+        labels_key: str | None = "_labels_annotation",
+        save_folder: str | None = None,
+        result_key: str | None = "popv_scanvi_prediction",
+        embedding_key: str | None = "X_scanvi_umap_popv",
+        model_kwargs: dict | None = None,
+        classifier_kwargs: dict | None = None,
+        embedding_kwargs: dict | None = None,
+        train_kwargs: dict | None = None,
     ) -> None:
-        """
-        Class to compute classifier in scANVI model and predict labels.
-
-        Parameters
-        ----------
-        batch_key
-            Key in obs field of adata for batch information.
-        labels_key
-            Key in obs field of adata for cell-type information.
-        n_epochs_unsupervised
-            Number of epochs scvi is trained in unsupervised mode.
-        n_epochs_semisupervised
-            Number of epochs scvi is trained in semisupervised mode.
-        use_gpu
-            Whether gpu is used for training.
-        result_key
-            Key in obs in which celltype annotation results are stored.
-        embedding_key
-            Key in obsm in which UMAP embedding of integrated data is stored.
-        model_kwargs
-            Dictionary to supply non-default values for SCVI model. Options at scvi.model.SCVI
-        classifier_kwargs
-            Dictionary to supply non-default values for SCANVI classifier.
-            Options at classifier_paramerers in scvi.model.SCANVI.from_scvi_model.
-        embedding_dict
-            Dictionary to supply non-default values for UMAP embedding. Options at sc.tl.umap
-        """
-
-        self.batch_key = batch_key
-        self.labels_key = labels_key
-        self.result_key = result_key
-        self.embedding_key = embedding_key
-
-        self.n_epochs_unsupervised = n_epochs_unsupervised
-        self.n_epochs_semisupervised = n_epochs_semisupervised
-        self.use_gpu = use_gpu
+        super().__init__(
+            batch_key=batch_key,
+            labels_key=labels_key,
+            result_key=result_key,
+            embedding_key=embedding_key,
+        )
         self.save_folder = save_folder
+
+        if embedding_kwargs is None:
+            embedding_kwargs = {}
+        if classifier_kwargs is None:
+            classifier_kwargs = {}
+        if model_kwargs is None:
+            model_kwargs = {}
+        if train_kwargs is None:
+            train_kwargs = {}
 
         self.model_kwargs = {
             "dropout_rate": 0.05,
@@ -73,13 +78,24 @@ class SCANVI_POPV:
 
         self.model_kwargs.update(model_kwargs)
 
+        self.train_kwargs = {
+            "max_epochs": 20,
+            "batch_size": 512,
+            "n_samples_per_label": 20,
+            "train_size": 1.0,
+            "accelerator": settings.accelerator,
+            "plan_kwargs" : {"n_epochs_kl_warmup": 20}
+        }
+        self.train_kwargs.update(train_kwargs)
+        self.max_epochs = train_kwargs.get("max_epochs", None)
+
         self.classifier_kwargs = {"n_layers": 3, "dropout_rate": 0.1}
         self.classifier_kwargs.update(classifier_kwargs)
 
-        self.embedding_dict = {"min_dist": 0.3}
-        self.embedding_dict.update(embedding_dict)
+        self.embedding_kwargs = {"min_dist": 0.3}
+        self.embedding_kwargs.update(embedding_kwargs)
 
-    def compute_integration(self, adata):
+    def _compute_integration(self, adata):
         logging.info("Integrating data with scANVI")
 
         # Go through obs field with subsampling information and subsample label information.
@@ -101,11 +117,6 @@ class SCANVI_POPV:
             ]
         )
 
-        if self.n_epochs_unsupervised is None:
-            self.n_epochs_unsupervised = round(
-                min(round((10000 / adata.n_obs) * 200), 200)
-            )
-
         if adata.uns["_prediction_mode"] == "retrain":
             if adata.uns["_pretrained_scvi_path"]:
                 scvi_model = scvi.model.SCVI.load(
@@ -121,8 +132,8 @@ class SCANVI_POPV:
                 scvi_model = scvi.model.SCVI(adata, **self.model_kwargs)
                 scvi_model.train(
                     train_size=1.0,
-                    max_epochs=self.n_epochs_unsupervised,
-                    use_gpu=adata.uns["_use_gpu"],
+                    max_epochs=min(round((10000 / adata.n_obs) * 200), 200),
+                    accelerator=settings.accelerator,
                     plan_kwargs={"n_epochs_kl_warmup": 20},
                 )
 
@@ -141,26 +152,15 @@ class SCANVI_POPV:
             )
 
         if adata.uns["_prediction_mode"] == "fast":
-            if self.n_epochs_semisupervised is None:
-                self.n_epochs_semisupervised = 1
+            if self.max_epochs is None:
+                self.train_kwargs.update({"max_epochs": 1})
+
             self.model.train(
-                max_epochs=1,
-                batch_size=512,
-                n_samples_per_label=20,
-                train_size=1.0,
-                accelerator='gpu' if adata.uns["_use_gpu"] else 'cpu',
-                plan_kwargs={"n_steps_kl_warmup": 1},
+                **self.train_kwargs
             )
         else:
-            if self.n_epochs_semisupervised is None:
-                self.n_epochs_semisupervised = 20
             self.model.train(
-                max_epochs=self.n_epochs_semisupervised,
-                batch_size=512,
-                n_samples_per_label=20,
-                train_size=1.0,
-                accelerator='gpu' if adata.uns["_use_gpu"] else 'cpu',
-                plan_kwargs={"n_epochs_kl_warmup": 20},
+                **self.train_kwargs
             )
         if adata.uns["_prediction_mode"] == "retrain":
             if adata.uns["_save_path_trained_models"]:
@@ -170,27 +170,25 @@ class SCANVI_POPV:
                     overwrite=True,
                 )
 
-    def predict(self, adata):
+    def _predict(self, adata):
         logging.info(
             f'Saving scanvi label prediction to adata.obs["{self.result_key}"]'
         )
 
         adata.obs[self.result_key] = self.model.predict(adata)
-        if adata.uns["_return_probabilities"]:
+        if self.return_probabilities:
             adata.obs[self.result_key + "_probabilities"] = np.max(
                 self.model.predict(adata, soft=True), axis=1
             )
 
-    def compute_embedding(self, adata):
-        if adata.uns["_compute_embedding"]:
+    def _compute_embedding(self, adata):
+        if self.compute_embedding:
             logging.info(
-                'Saving UMAP of scanvi results to adata.obs["{}"]'.format(
-                    self.embedding_key
-                )
+                f'Saving UMAP of scanvi results to adata.obs["{self.embedding_key}"]'
             )
             adata.obsm["X_scanvi"] = self.model.get_latent_representation(adata)
             method = 'rapids' if settings.cuml else 'umap'
             sc.pp.neighbors(adata, use_rep="X_scanvi", method=method)
             adata.obsm[self.embedding_key] = sc.tl.umap(
-                adata, copy=True, method=method, **self.embedding_dict
+                adata, copy=True, method=method, **self.embedding_kwargs
             ).obsm["X_umap"]

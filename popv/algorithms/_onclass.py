@@ -1,48 +1,55 @@
+from __future__ import annotations
+
 import logging
-from typing import Optional
 
 import numpy as np
 import obonet
-import scipy
 import pandas as pd
+import scipy
 from OnClass.OnClassModel import OnClassModel
+
 from popv import settings
+from popv.algorithms._base_algorithm import BaseAlgorithm
 
 
-class ONCLASS:
+class ONCLASS(BaseAlgorithm):
+    """
+    Class to compute KNN classifier after BBKNN integration.
+
+    Parameters
+    ----------
+    batch_key
+        Key in obs field of adata for batch information.
+    labels_key
+        Key in obs field of adata for cell-type information.
+    layer_key
+        Layer in adata used for Onclass prediction.
+    max_iter
+        Maximum iteration in Onclass training
+    cell_ontology_obs_key
+        Key in obs in which ontology celltypes are stored.
+    result_key
+        Key in obs in which celltype annotation results are stored.
+    """
+
     def __init__(
         self,
-        batch_key: Optional[str] = "_batch_annotation",
-        labels_key: Optional[str] = "_labels_annotation",
-        layers_key: Optional[str] = None,
-        max_iter: Optional[int] = 30,
-        cell_ontology_obs_key: Optional[str] = None,
-        result_key: Optional[str] = "popv_onclass_prediction",
-        seen_result_key: Optional[str] = "popv_onclass_seen",
+        batch_key: str | None = "_batch_annotation",
+        labels_key: str | None = "_labels_annotation",
+        layer_key: str | None = None,
+        max_iter: int | None = 30,
+        cell_ontology_obs_key: str | None = None,
+        result_key: str | None = "popv_onclass_prediction",
+        seen_result_key: str | None = "popv_onclass_seen",
     ) -> None:
-        """
-        Class to compute KNN classifier after BBKNN integration.
-
-        Parameters
-        ----------
-        batch_key
-            Key in obs field of adata for batch information.
-        labels_key
-            Key in obs field of adata for cell-type information.
-        layers_key
-            Layer in adata used for Onclass prediction.
-        max_iter
-            Maximum iteration in Onclass training
-        cell_ontology_obs_key
-            Key in obs in which ontology celltypes are stored.
-        result_key
-            Key in obs in which celltype annotation results are stored.
-        """
-        self.batch_key = batch_key
-        self.labels_key = labels_key
-        self.result_key = result_key
-        self.seen_result_key = seen_result_key
-        self.layers_key = layers_key
+        super().__init__(
+            batch_key=batch_key,
+            labels_key=labels_key,
+            result_key=result_key,
+            seen_result_key=seen_result_key,
+            layer_key=layer_key,
+        )
+        self.cell_ontology_obs_key = cell_ontology_obs_key
 
         if cell_ontology_obs_key is None:
             self.cell_ontology_obs_key = self.labels_key + "_cell_ontology_id"
@@ -102,14 +109,12 @@ class ONCLASS:
 
         adata.obs[ontology_key] = ontology_id
 
-    def compute_integration(self, adata):
+    def _compute_integration(self, adata):
         pass
 
-    def predict(self, adata):
+    def _predict(self, adata):
         logging.info(
-            'Computing Onclass. Storing prediction in adata.obs["{}"]'.format(
-                self.result_key
-            )
+            f'Computing Onclass. Storing prediction in adata.obs["{self.result_key}"]'
         )
         adata.obs.loc[
             adata.obs["_dataset"] == "query", self.cell_ontology_obs_key
@@ -117,12 +122,12 @@ class ONCLASS:
 
         train_idx = adata.obs["_ref_subsample"]
 
-        if self.layers_key is None:
+        if self.layer_key is None:
             train_x = adata[train_idx].X.copy()
             test_x = adata.X.copy()
         else:
-            train_x = adata[train_idx].layers[self.layers_key].copy()
-            test_x = adata.layers[self.layers_key].copy()
+            train_x = adata[train_idx].layers[self.layer_key].copy()
+            test_x = adata.layers[self.layer_key].copy()
         if scipy.sparse.issparse(train_x):
             train_x = train_x.todense()
 
@@ -168,7 +173,7 @@ class ONCLASS:
         else:
             train_model.BuildModel(ngene=None, use_pretrain=model_path)
 
-        if adata.uns["_return_probabilities"]:
+        if self.return_probabilities:
             required_columns = [
                 self.seen_result_key, self.result_key, self.result_key + "_probabilities", self.seen_result_key + "_probabilities"]
         else:
@@ -207,14 +212,13 @@ class ONCLASS:
                 pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
                 pred_label_str = [clid_2_name[ind] for ind in pred_label]
                 result_df.loc[names_x, self.result_key] = pred_label_str
-                result_df
 
                 onclass_seen = np.argmax(onclass_pred[0], axis=1)
                 pred_label = [train_model.i2co[ind] for ind in onclass_seen]
                 pred_label_str = [clid_2_name[ind] for ind in pred_label]
                 result_df.loc[names_x, self.seen_result_key] = pred_label_str
 
-                if adata.uns["_return_probabilities"]:
+                if self.return_probabilities:
                     result_df.loc[names_x, self.result_key + "_probabilities"] = np.max(
                         onclass_pred[1], axis=1
                     ) / onclass_pred[1].sum(1)
@@ -223,5 +227,5 @@ class ONCLASS:
                     )
         adata.obs[result_df.columns] = result_df
 
-    def compute_embedding(self, adata):
+    def _compute_embedding(self, adata):
         return None

@@ -127,7 +127,7 @@ exclude = '''
 src = ["."]
 line-length = 119
 target-version = "py38"
-select = [
+lint.select = [
     "F",  # Errors detected by Pyflakes
     "E",  # Error detected by Pycodestyle
     "W",  # Warning detected by Pycodestyle
@@ -138,9 +138,15 @@ select = [
     "C4",  # flake8-comprehensions
     "BLE",  # flake8-blind-except
     "UP",  # pyupgrade
-    "RUF100",  # Report unused noqa directives
+    "RUF",  # Ruff formatting
+    "TCH", # flake8-type-checking
+    "FA", # flake8-future-annotations (FA)
+    "TD", # TODO
+    "UP",  # pyupgrade
+    "RUF",  # Report unused noqa directives
+    "PT", # pytest style
 ]
-ignore = [
+lint.ignore = [
     # line too long -> we accept long comment lines; black gets rid of long code lines
     "E501",
     # Do not assign a lambda expression, use a def -> lambda expression assignments are convenient
@@ -170,10 +176,10 @@ ignore = [
     "D417",
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "numpy"
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "docs/*" = ["I", "BLE001"]
 "tests/*" = ["D"]
 "*/__init__.py" = ["F401"]

@@ -1,7 +1,8 @@
+from __future__ import annotations
+
 import logging
 import os
 import subprocess
-from typing import List, Optional, Union
 
 import anndata
 import numpy as np
@@ -10,84 +11,73 @@ import torch
 from scanpy._utils import check_nonnegative_integers
 
 from popv import _utils
-from popv import settings
 
 
 class Process_Query:
+    """
+    Processes the query and reference dataset in preperation for the annotation pipeline.
+
+    Parameters
+    ----------
+    query_adata
+        AnnData of query cells
+    ref_adata
+        AnnData of reference cells
+    ref_labels_key
+        Key in obs field of reference AnnData with cell-type information
+    ref_batch_keys
+        List of Keys (or None) in obs field of reference AnnData to
+        use as batch covariate
+    query_labels_key
+        Key in obs field of query adata for label information.
+        This is only used for training scANVI.
+        Make sure to set unknown_celltype_label to mark unlabelled cells.
+    query_batch_key
+        Key in obs field of query adata for batch information.
+    query_layer_key
+        If not None, expects raw_count data in query_layer_key.
+    prediction_mode
+        Execution mode of cell-type annotation.
+        "retrain": Train all prediction models and saves them to disk if save_path_trained_models is not None.
+        "inference": Classify all cells based on pretrained models.
+        "fast": Fast inference using only query cells and single epoch in scArches.
+    cl_obo_folder
+        Folder containing the cell-type obo for Onclass, ontologies for Onclass and nlp embedding of cell-types.
+        Passing a list will use element 1 as obo, element 2 as ontologies and element 3 as nlp embedding.
+        Setting it to false will disable ontology use.
+    unknown_celltype_label
+        If query_labels_key is not None, cells with label unknown_celltype_label
+        will be treated as unknown and will be predicted by the model.
+    n_samples_per_label
+        Reference AnnData will be subset to these amount of cells per cell-type to increase speed.
+    pretrained_scvi_path
+        If path is None, will train scVI from scratch. Else if
+        pretrained_path is set and all the genes in the pretrained models are present
+        in query adata, will train the scARCHES version of scVI and scANVI, resulting in
+        faster training times.
+    save_path_trained_models
+        If mode=='retrain' saves models to this directory. Otherwise trained models are expected in this folder.
+    hvg
+        If Int, subsets data to n highly variable genes according to `sc.pp.highly_variable_genes`
+    """
+
     def __init__(
         self,
         query_adata: anndata.AnnData,
         ref_adata: anndata.AnnData,
         ref_labels_key: str,
         ref_batch_key: str,
-        query_labels_key: Optional[str] = None,
-        query_batch_key: Optional[str] = None,
-        query_layers_key: Optional[str] = None,
-        prediction_mode: Optional[str] = "retrain",
-        cl_obo_folder: Optional[Union[List, str, bool]] = None,
-        unknown_celltype_label: Optional[str] = "unknown",
-        n_samples_per_label: Optional[int] = 300,
-        pretrained_scvi_path: Optional[str] = False,
-        save_path_trained_models: Optional[str] = "tmp/",
-        hvg: Optional[int] = 4000,
-        use_gpu: Optional[bool] = True,
-        compute_embedding: Optional[bool] = True,
-        return_probabilities: Optional[bool] = True,
+        query_labels_key: str | None = None,
+        query_batch_key: str | None = None,
+        query_layer_key: str | None = None,
+        prediction_mode: str | None = "retrain",
+        cl_obo_folder: list | str | bool | None = None,
+        unknown_celltype_label: str | None = "unknown",
+        n_samples_per_label: int | None = 300,
+        pretrained_scvi_path: str | None = False,
+        save_path_trained_models: str | None = "tmp/",
+        hvg: int | None = 4000,
     ) -> None:
-        """
-        Processes the query and reference dataset in preperation for the annotation pipeline.
-
-
-        Parameters
-        ----------
-        query_adata
-            AnnData of query cells
-        ref_adata
-            AnnData of reference cells
-        ref_labels_key
-            Key in obs field of reference AnnData with cell-type information
-        ref_batch_keys
-            List of Keys (or None) in obs field of reference AnnData to
-            use as batch covariate
-        query_labels_key
-            Key in obs field of query adata for label information.
-            This is only used for training scANVI.
-            Make sure to set unknown_celltype_label to mark unlabelled cells.
-        query_batch_key
-            Key in obs field of query adata for batch information.
-        query_layers_key
-            If not None, expects raw_count data in query_layers_key.
-        prediction_mode
-            Execution mode of cell-type annotation.
-            "retrain": Train all prediction models and saves them to disk if save_path_trained_models is not None.
-            "inference": Classify all cells based on pretrained models.
-            "fast": Fast inference using only query cells and single epoch in scArches.
-        cl_obo_folder
-            Folder containing the cell-type obo for Onclass, ontologies for Onclass and nlp embedding of cell-types.
-            Passing a list will use element 1 as obo, element 2 as ontologies and element 3 as nlp embedding.
-            Setting it to false will disable ontology use.
-        unknown_celltype_label
-            If query_labels_key is not None, cells with label unknown_celltype_label
-            will be treated as unknown and will be predicted by the model.
-        n_samples_per_label
-            Reference AnnData will be subset to these amount of cells per cell-type to increase speed.
-        pretrained_scvi_path
-            If path is None, will train scVI from scratch. Else if
-            pretrained_path is set and all the genes in the pretrained models are present
-            in query adata, will train the scARCHES version of scVI and scANVI, resulting in
-            faster training times.
-        save_path_trained_models
-            If mode=='retrain' saves models to this directory. Otherwise trained models are expected in this folder.
-        hvg
-            If Int, subsets data to n highly variable genes according to `sc.pp.highly_variable_genes`
-        use_gpu
-            If gpu is used to train scVI and scANVI model
-        compute_embedding
-            Whether UMAP is computed for all integration methods (BBKNN, SCANORAMA, SCANVI, SCVI)
-        return_probabilities
-            Reports probabilities of the PopV prediction for each method where applicable
-        """
-
         self.labels_key = {"reference": ref_labels_key, "query": query_labels_key}
         self.unknown_celltype_label = unknown_celltype_label
         self.batch_key = {"reference": ref_batch_key, "query": query_batch_key}
@@ -105,7 +95,6 @@ class Process_Query:
         self.save_path_trained_models = save_path_trained_models
 
         self.prediction_mode = prediction_mode
-        self.return_probabilities = return_probabilities
         self.genes = None
         if self.prediction_mode == "fast":
             assert self.pretrained_scvi_path, 'Fast mode requires a pretrained scvi model.'
@@ -160,7 +149,7 @@ class Process_Query:
                     subset=False,
                     flavor="seurat_v3",
                     inplace=False,
-                    layer=query_layers_key,
+                    layer=query_layer_key,
                     batch_key=query_batch_key,
                     span=1.0,
                 )["highly_variable"]
@@ -168,16 +157,14 @@ class Process_Query:
             else:
                 self.genes = gene_intersection
         self.query_adata = query_adata[:, self.genes].copy()
-        if query_layers_key is not None:
-            self.query_adata.X = self.query_adata.layers[query_layers_key].copy()
+        if query_layer_key is not None:
+            self.query_adata.X = self.query_adata.layers[query_layer_key].copy()
 
         self.validity_checked = False
-        self.use_gpu = use_gpu
         if self.prediction_mode == "fast":
             self.n_samples_per_label = None
         else:
             self.n_samples_per_label = n_samples_per_label
-        self.compute_embedding = compute_embedding
 
         if cl_obo_folder is None:
             self.cl_obo_file = (
@@ -216,23 +203,23 @@ class Process_Query:
             try:
                 with open(self.cl_obo_file):
                     pass
-            except FileNotFoundError:
+            except FileNotFoundError as err:
                 raise FileNotFoundError(
                     f"{self.cl_obo_file} doesn't exist. Check that folder exists."
-                )
+                ) from err
 
-        self.setup_dataset(self.query_adata, "query")
-        self.check_validity_anndata(self.query_adata, "query")
-        self.setup_dataset(self.query_adata, "query", add_meta="_query")
+        self._setup_dataset(self.query_adata, "query")
+        self._check_validity_anndata(self.query_adata, "query")
+        self._setup_dataset(self.query_adata, "query", add_meta="_query")
 
         if self.prediction_mode != "fast":
             self.ref_adata = ref_adata[:, self.genes].copy()
-            self.setup_dataset(self.ref_adata, "reference")
-            self.check_validity_anndata(self.ref_adata, "reference")
+            self._setup_dataset(self.ref_adata, "reference")
+            self._check_validity_anndata(self.ref_adata, "reference")
 
-        self.preprocess()
+        self._preprocess()
 
-    def check_validity_anndata(self, adata, input_type):
+    def _check_validity_anndata(self, adata, input_type):
         assert check_nonnegative_integers(
             adata.X
         ), f"Make sure input {input_type} adata contains raw_counts"
@@ -242,7 +229,7 @@ class Process_Query:
         assert adata.n_obs > 0, f"{input_type} anndata has no cells."
         assert adata.n_vars > 0, f"{input_type} anndata has no genes."
 
-    def setup_dataset(self, adata, key, add_meta=""):
+    def _setup_dataset(self, adata, key, add_meta=""):
         if isinstance(self.batch_key[key], list):
             adata.obs["_batch_annotation"] = (
                 adata.obs[self.batch_key[key]].astype(str).sum(1).astype("category")
@@ -280,7 +267,7 @@ class Process_Query:
         else:
             adata.obs["_ref_subsample"] = False
 
-    def preprocess(self):
+    def _preprocess(self):
 
         if self.prediction_mode == "fast":
             self.adata = self.query_adata
@@ -356,7 +343,4 @@ class Process_Query:
         self.adata.uns["_cl_obo_file"] = self.cl_obo_file
         self.adata.uns["_cl_ontology_file"] = self.cl_ontology_file
         self.adata.uns["_nlp_emb_file"] = self.nlp_emb_file
-        self.adata.uns["_use_gpu"] = self.use_gpu
-        self.adata.uns["_compute_embedding"] = self.compute_embedding
-        self.adata.uns["_return_probabilities"] = self.return_probabilities
         self.adata.uns["prediction_keys"] = []

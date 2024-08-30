@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Union, Optional
-
-from rich.console import Console
-from rich.logging import RichHandler
 
 import scanpy as sc
 import scvi
+from rich.console import Console
+from rich.logging import RichHandler
 
 popv_logger = logging.getLogger("popv")
 
@@ -43,7 +43,7 @@ class Config:
     def __init__(
         self,
         verbosity: int = logging.WARNING,
-        seed: Optional[int] = None,
+        seed: int | None = None,
         logging_dir: str = "./popv_log/",
         n_jobs: int = 1,
         cuml: bool = False,
@@ -56,6 +56,9 @@ class Config:
         self.n_jobs = n_jobs
         self.cuml = cuml
         self.shard_size = shard_size
+        self.accelerator = "cpu"
+        self.return_probabilities = True
+        self.compute_embedding = True
 
     @property
     def logging_dir(self) -> Path:
@@ -63,7 +66,7 @@ class Config:
         return self._logging_dir
 
     @logging_dir.setter
-    def logging_dir(self, logging_dir: Union[str, Path]):
+    def logging_dir(self, logging_dir: str | Path):
         self._logging_dir = Path(logging_dir).resolve()
 
     @property
@@ -114,7 +117,7 @@ class Config:
         return self._verbosity
 
     @verbosity.setter
-    def verbosity(self, level: Union[str, int]):
+    def verbosity(self, level: str | int):
         """
         Sets logging configuration for popV based on chosen level of verbosity.
 
@@ -139,5 +142,32 @@ class Config:
             popv_logger.addHandler(ch)
         else:
             popv_logger.setLevel(level)
+
+    @property
+    def accelerator(self) -> bool:
+        """Accelerator for scvi-tools models."""
+        return self._accelerator
+
+    @accelerator.setter
+    def accelerator(self, accelerator: str):
+        self._accelerator = accelerator
+
+    @property
+    def compute_embedding(self) -> bool:
+        """Compute UMAP embedding for integration methods."""
+        return self._compute_embedding
+
+    @compute_embedding.setter
+    def compute_embedding(self, compute_embedding: bool):
+        self._compute_embedding = compute_embedding
+
+    @property
+    def return_probabilities(self) -> bool:
+        """Return internal certainties for all classifiers."""
+        return self._return_probabilities
+
+    @return_probabilities.setter
+    def return_probabilities(self, return_probabilities: bool):
+        self._return_probabilities = return_probabilities
 
 settings = Config()

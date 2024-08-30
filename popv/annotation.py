@@ -1,14 +1,15 @@
 """Helper function to execute cell-type annotation and accumulate results."""
 
+from __future__ import annotations
+
 import inspect
 import logging
 import os
 import pickle
 import string
 from collections import defaultdict
-from typing import Optional
+from typing import TYPE_CHECKING
 
-import anndata
 import networkx as nx
 import numpy as np
 import pandas as pd
@@ -16,12 +17,15 @@ from tqdm import tqdm
 
 from popv import _utils, algorithms
 
+if TYPE_CHECKING:
+    import anndata
+
 
 def annotate_data(
     adata: anndata.AnnData,
-    methods: Optional[list] = None,
-    save_path: Optional[str] = None,
-    methods_kwargs: Optional[dict] = None,
+    methods: list | None = None,
+    save_path: str | None = None,
+    methods_kwargs: dict | None = None,
 ) -> None:
     """
     Annotate an AnnData dataset preprocessed by preprocessing.Process_Query by using the annotation pipeline.
@@ -30,7 +34,9 @@ def annotate_data(
     ----------
     adata
         AnnData of query and reference cells. Adata object of Process_Query instance.
-    methods
+
+    Methods
+    -------
         List of methods used for cell-type annotation. Defaults to all algorithms.
     save_path
         Path were annotated query data is saved. Defaults to None and is not saving data.
@@ -58,14 +64,11 @@ def annotate_data(
 
     for method in tqdm(methods):
         current_method = getattr(algorithms, method)(**methods_kwargs.pop(method, {}))
-        current_method.compute_integration(adata)
-        current_method.predict(adata)
-        current_method.compute_embedding(adata)
+        current_method._compute_integration(adata)
+        current_method._predict(adata)
+        current_method._compute_embedding(adata)
         all_prediction_keys += [current_method.result_key]
-        if hasattr(current_method, "seen_result_key"):
-            all_prediction_keys_seen += [current_method.seen_result_key]
-        else:
-            all_prediction_keys_seen += [current_method.result_key]
+        all_prediction_keys_seen += [current_method.seen_result_key]
 
     # Here we compute the consensus statistics
     logging.info(f"Using predictions {all_prediction_keys} for PopV consensus")
@@ -87,8 +90,8 @@ def annotate_data(
     if save_path is not None:
         prediction_save_path = os.path.join(save_path, "predictions.csv")
         adata[adata.obs._dataset == "query"].obs[
-            all_prediction_keys
-            + [
+            [
+                *all_prediction_keys,
                 "popv_prediction",
                 "popv_prediction_score",
                 "popv_majority_vote_prediction",
@@ -112,7 +115,7 @@ def compute_consensus(adata: anndata.AnnData, prediction_keys: list) -> None:
         Keys in adata.obs containing predicted cell_types.
 
     Returns
-    ----------
+    -------
     Saves the consensus prediction in adata.obs['popv_majority_vote_prediction']
     Saves the consensus percentage between methods in adata.obs['popv_majority_vote_score']
 
@@ -129,7 +132,7 @@ def compute_consensus(adata: anndata.AnnData, prediction_keys: list) -> None:
 def ontology_vote_onclass(
     adata: anndata.AnnData,
     prediction_keys: list,
-    save_key: Optional[str] = "popv_prediction",
+    save_key: str | None = "popv_prediction",
 ):
     """
     Compute prediction using ontology aggregation method.
@@ -144,7 +147,7 @@ def ontology_vote_onclass(
         Name of the field in adata.obs to store the consensus prediction.
 
     Returns
-    ----------
+    -------
     Saves the consensus prediction in adata.obs[save_key]
     Saves the consensus percentage between methods in adata.obs[save_key + '_score']
     Saves the overlap in original prediction in
@@ -241,7 +244,7 @@ def ontology_parent_onclass(
         How many misclassifications are allowed to find common ontology ancestor. Defaults to 2.
 
     Returns
-    ----------
+    -------
     Saves the consensus prediction in adata.obs[save_key]
     Saves the consensus percentage between methods in adata.obs[save_key + '_score']
     Saves the overlap in original prediction in
@@ -260,7 +263,7 @@ def ontology_parent_onclass(
     cell_type_root_to_node = {}
     aggregate_ontology_pred = []
     depth = {"cell": 0}
-    for ind, cell in enumerate(adata.obs.index):
+    for _ind, cell in enumerate(adata.obs.index):
         score = defaultdict(lambda: 0)
         score_popv = defaultdict(lambda: 0)
         score["cell"] = 0
@@ -277,7 +280,7 @@ def ontology_parent_onclass(
                         depth[ancestor_cell_type] = len(
                             nx.shortest_path(G, ancestor_cell_type, "cell")
                         )
-                for ancestor_cell_type in list(root_to_node) + [cell_type]:
+                for ancestor_cell_type in [*list(root_to_node), cell_type]:
                     score[ancestor_cell_type] += 1
                 score_popv[cell_type] += 1
         score = {
