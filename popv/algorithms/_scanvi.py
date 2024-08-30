@@ -75,8 +75,8 @@ class SCANVI_POPV(BaseAlgorithm):
             "use_layer_norm": "both",
             "encode_covariates": True,
         }
-
-        self.model_kwargs.update(model_kwargs)
+        if model_kwargs is not None:
+            self.model_kwargs.update(model_kwargs)
 
         self.train_kwargs = {
             "max_epochs": 20,
@@ -90,7 +90,8 @@ class SCANVI_POPV(BaseAlgorithm):
         self.max_epochs = train_kwargs.get("max_epochs", None)
 
         self.classifier_kwargs = {"n_layers": 3, "dropout_rate": 0.1}
-        self.classifier_kwargs.update(classifier_kwargs)
+        if classifier_kwargs is not None:
+            self.classifier_kwargs.update(classifier_kwargs)
 
         self.embedding_kwargs = {"min_dist": 0.3}
         self.embedding_kwargs.update(embedding_kwargs)
@@ -102,13 +103,9 @@ class SCANVI_POPV(BaseAlgorithm):
         if "subsampled_labels" not in adata.obs.columns:
             adata.obs["subsampled_labels"] = [
                 label if subsampled else adata.uns["unknown_celltype_label"]
-                for label, subsampled in zip(
-                    adata.obs["_labels_annotation"], adata.obs["_ref_subsample"]
-                )
+                for label, subsampled in zip(adata.obs["_labels_annotation"], adata.obs["_ref_subsample"])
             ]
-        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype(
-            "category"
-        )
+        adata.obs["subsampled_labels"] = adata.obs["subsampled_labels"].astype("category")
         yprior = torch.tensor(
             [
                 adata.obs["_labels_annotation"].value_counts()[i] / adata.n_obs

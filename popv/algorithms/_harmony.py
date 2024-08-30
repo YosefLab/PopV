@@ -60,10 +60,12 @@ class HARMONY(BaseAlgorithm):
             method_dict = {}
 
         self.method_dict = {"dimred": 50}
-        self.method_dict.update(method_dict)
+        if method_dict is not None:
+            self.method_dict.update(method_dict)
 
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
         self.embedding_kwargs = {"min_dist": 0.1}
         self.embedding_kwargs.update(embedding_kwargs)

@@ -47,10 +47,12 @@ class CELLTYPIST(BaseAlgorithm):
             method_dict = {}
 
         self.method_dict = {"check_expression": False, "n_jobs": 10, "max_iter": 500}
-        self.method_dict.update(method_dict)
+        if method_dict is not None:
+            self.method_dict.update(method_dict)
 
         self.classifier_dict = {"mode": "best match", "majority_voting": True}
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
     def _predict(self, adata):
         logging.info(f'Saving celltypist results to adata.obs["{self.result_key}"]')
@@ -81,9 +83,7 @@ class CELLTYPIST(BaseAlgorithm):
             **self.classifier_dict,
         )
         out_column = (
-            "majority_voting"
-            if "majority_voting" in predictions.predicted_labels.columns
-            else "predicted_labels"
+            "majority_voting" if "majority_voting" in predictions.predicted_labels.columns else "predicted_labels"
         )
 
         adata.obs[self.result_key] = predictions.predicted_labels[out_column]

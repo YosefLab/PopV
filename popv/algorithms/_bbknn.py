@@ -61,10 +61,12 @@ class BBKNN(BaseAlgorithm):
             "neighbors_within_batch": 3 if self.enable_cuml else 8,
             "use_annoy": False, #pynndescent
         }
-        self.method_dict.update(method_dict)
+        if method_dict is not None:
+            self.method_dict.update(method_dict)
 
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
         self.embedding_kwargs = {
             "min_dist": 0.1}
@@ -99,9 +101,7 @@ class BBKNN(BaseAlgorithm):
             ]
         )
         if smallest_neighbor_graph < 15:
-            logging.warning(
-                f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN."
-            )
+            logging.warning(f"BBKNN found only {smallest_neighbor_graph} neighbors. Reduced neighbors in KNN.")
             self.classifier_dict["n_neighbors"] = smallest_neighbor_graph
 
         knn = KNeighborsClassifier(metric="precomputed", **self.classifier_dict)

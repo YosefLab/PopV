@@ -52,7 +52,8 @@ class RF(BaseAlgorithm):
             "max_features": 200,
             "n_jobs": settings.n_jobs,
         }
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
     def _predict(self, adata):
         logging.info(

@@ -135,14 +135,10 @@ class ONCLASS(BaseAlgorithm):
         cl_ontology_file = adata.uns["_cl_ontology_file"]
         nlp_emb_file = adata.uns["_nlp_emb_file"]
 
-        celltype_dict, clid_2_name = self.make_celltype_to_cell_ontology_id_dict(
-            cl_obo_file
-        )
+        celltype_dict, clid_2_name = self.make_celltype_to_cell_ontology_id_dict(cl_obo_file)
         self.make_cell_ontology_id(adata, celltype_dict, self.cell_ontology_obs_key)
 
-        train_model = OnClassModel(
-            cell_type_nlp_emb_file=nlp_emb_file, cell_type_network_file=cl_ontology_file
-        )
+        train_model = OnClassModel(cell_type_nlp_emb_file=nlp_emb_file, cell_type_network_file=cl_ontology_file)
 
         if adata.uns["_save_path_trained_models"] is not None:
             model_path = adata.uns["_save_path_trained_models"] + "/OnClass"

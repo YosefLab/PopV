@@ -51,7 +51,8 @@ class SVM(BaseAlgorithm):
             "max_iter": 5000,
             "class_weight": "balanced",
         }
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
     def _predict(self, adata):
         logging.info(
@@ -85,11 +86,7 @@ class SVM(BaseAlgorithm):
                     ),
                 )
         else:
-            clf = pickle.load(
-                open(
-                    adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"
-                )
-            )
+            clf = pickle.load(open(adata.uns["_save_path_trained_models"] + "svm_classifier.pkl", "rb"))
 
         if settings.cuml and scp.issparse(test_x):
             if self.return_probabilities:

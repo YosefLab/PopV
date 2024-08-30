@@ -17,15 +17,7 @@ def plot(input_data, *args, **kwargs):
 
 
 class AlluvialTool:
-    def __init__(
-        self,
-        input_data=(),
-        x_range=(0, 1),
-        res=20,
-        h_gap_frac=0.03,
-        v_gap_frac=0.03,
-        **kwargs
-    ):
+    def __init__(self, input_data=(), x_range=(0, 1), res=20, h_gap_frac=0.03, v_gap_frac=0.03, **kwargs):
         self.input = input_data
         self.x_range = x_range
         self.res = res  # defines the resolution of the splines for all veins
@@ -38,14 +30,7 @@ class AlluvialTool:
         self.h_gap = x_range[1] * h_gap_frac
         self.v_gap_frac = v_gap_frac
         self.v_gap = (
-            sum(
-                [
-                    width
-                    for b_item_counter in self.data_dic.values()
-                    for width in b_item_counter.values()
-                ]
-            )
-            * v_gap_frac
+            sum([width for b_item_counter in self.data_dic.values() for width in b_item_counter.values()]) * v_gap_frac
         )
         self.group_widths = self.get_group_widths()
         self.item_coord_dic = self.make_item_coordinate_dic()
@@ -117,32 +102,26 @@ class AlluvialTool:
 
     def get_item_groups(self, a_sort=None, b_sort=None, **kwargs):
         _ = kwargs
-        a_members = (
-            sorted(
-                set(self.data_dic),
-                key=lambda x: self.item_widths_dic[x],
-            )
-            if not a_sort
-            else a_sort
-        )
         b_members = (
             sorted(
-                {
-                    b_item
-                    for b_item_counter in self.data_dic.values()
-                    for b_item in b_item_counter
-                },
+                set(self.data_dic),
                 key=lambda x: self.item_widths_dic[x],
             )
             if not b_sort
             else b_sort
         )
+        a_members = (
+            sorted(
+                set(self.data_dic.keys()),
+                key=lambda x: self.item_widths_dic[x],
+            )
+            if not a_sort
+            else a_sort
+        )
         return a_members, b_members
 
     def get_group_widths(self):
-        return [
-            self.get_group_width(group) for group in (self.a_members, self.b_members)
-        ]
+        return [self.get_group_width(group) for group in (self.a_members, self.b_members)]
 
     def make_item_coordinate_dic(
         self,
@@ -160,10 +139,7 @@ class AlluvialTool:
         return item_coord_dic
 
     def get_group_width(self, group):
-        return (
-            sum([self.item_widths_dic[item] for item in group])
-            + (len(group) - 1) * self.v_gap
-        )
+        return sum([self.item_widths_dic[item] for item in group]) + (len(group) - 1) * self.v_gap
 
     def generate_alluvial_vein(self, a_item, b_item):
         width = self.data_dic[a_item][b_item]
@@ -217,7 +193,7 @@ class AlluvialTool:
                             b_item,
                         ]
                     ]
-        return np.array(alluvial_fan)
+        return np.array(alluvial_fan, dtype=object)
 
     def plot(self, figsize=(10, 15), alpha=0.5, **kwargs):
         colors = self.get_color_array(**kwargs)
@@ -238,22 +214,14 @@ class AlluvialTool:
         ax.autoscale()
         return ax
 
-    def get_color_array(
-        self, colors=None, color_side=0, rand_seed=1, cmap=None, **kwargs
-    ):
+    def get_color_array(self, colors=None, color_side=0, rand_seed=1, cmap=None, **kwargs):
         _ = kwargs
         color_items = self.b_members if color_side else self.a_members
         lci = len(color_items)
         if rand_seed is not None:
             np.random.seed(rand_seed)
-        cmap = (
-            cmap if cmap is not None else matplotlib.cm.get_cmap("hsv", lci * 10**3)
-        )
-        color_array = (
-            colors
-            if colors is not None
-            else [cmap(item) for ind, item in enumerate(np.random.rand(lci))]
-        )
+        cmap = cmap if cmap is not None else matplotlib.cm.get_cmap("hsv", lci * 10**3)
+        color_array = colors if colors is not None else [cmap(item) for ind, item in enumerate(np.random.rand(lci))]
         ind_dic = {item: ind for ind, item in enumerate(color_items)}
         polygon_colors = []
         for (
@@ -288,15 +256,7 @@ class AlluvialTool:
                 fontname=fontname,
             )
 
-    def label_sides(
-        self,
-        labels=None,
-        label_shift=0,
-        disp_width=False,
-        wdisp_sep=7 * " ",
-        fontname="Arial",
-        **kwargs
-    ):
+    def label_sides(self, labels=None, label_shift=0, disp_width=False, wdisp_sep=7 * " ", fontname="Arial", **kwargs):
         if labels is not None:
             _ = kwargs
             y = max(self.group_widths) / 2
@@ -304,9 +264,7 @@ class AlluvialTool:
             for side, sign in enumerate((-1, 1)):
                 plt.text(
                     self.x_range[side]
-                    + sign
-                    * (label_shift + itl + int(disp_width) * (len(wdisp_sep) + wtl))
-                    * self.h_gap_frac,
+                    + sign * (label_shift + itl + int(disp_width) * (len(wdisp_sep) + wtl)) * self.h_gap_frac,
                     y,
                     labels[side],
                     # bidi.algorithm.get_display(labels[side]),  # RTL languages
@@ -317,9 +275,7 @@ class AlluvialTool:
                     rotation=90 - 180 * side,
                 )
 
-    def item_text(
-        self, item, side, disp_width=False, wdisp_sep=7 * " ", width_in=True, **kwargs
-    ):
+    def item_text(self, item, side, disp_width=False, wdisp_sep=7 * " ", width_in=True, **kwargs):
         _ = kwargs
         f_item = item
         # f_item = bidi.algorithm.get_display(item)  # for RTL languages

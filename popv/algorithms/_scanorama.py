@@ -61,10 +61,12 @@ class SCANORAMA(BaseAlgorithm):
             method_dict = {}
 
         self.method_dict = {"dimred": 50}
-        self.method_dict.update(method_dict)
+        if method_dict is not None:
+            self.method_dict.update(method_dict)
 
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
-        self.classifier_dict.update(classifier_dict)
+        if classifier_dict is not None:
+            self.classifier_dict.update(classifier_dict)
 
         self.embedding_kwargs = {
             "min_dist": 0.1,
@@ -74,10 +76,7 @@ class SCANORAMA(BaseAlgorithm):
     def _compute_integration(self, adata):
         logging.info("Integrating data with scanorama")
 
-        _adatas = [
-            adata[adata.obs[self.batch_key] == i]
-            for i in np.unique(adata.obs[self.batch_key])
-        ]
+        _adatas = [adata[adata.obs[self.batch_key] == i] for i in np.unique(adata.obs[self.batch_key])]
         scanorama.integrate_scanpy(_adatas, **self.method_dict)
         tmp_adata = anndata.concat(_adatas)
         adata.obsm["X_scanorama"] = tmp_adata[adata.obs_names].obsm["X_scanorama"]
