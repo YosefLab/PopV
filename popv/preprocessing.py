@@ -97,7 +97,8 @@ class Process_Query:
         self.prediction_mode = prediction_mode
         self.genes = None
         if self.prediction_mode == "fast":
-            assert self.pretrained_scvi_path, 'Fast mode requires a pretrained scvi model.'
+            if not self.pretrained_scvi_path:
+                raise ValueError("Fast mode requires a pretrained scvi model.")
             self.genes = torch.load(
                 self.pretrained_scvi_path + "model.pt",
                 map_location="cpu",
@@ -113,28 +114,26 @@ class Process_Query:
                         self.save_path_trained_models + "/scanvi/model.pt",
                         map_location="cpu",
                     )["var_names"]
-                    assert list(pretrained_scvi_genes) == list(
-                        pretrained_scanvi_genes
-                    ), "Pretrained SCANVI and SCVI model contain different genes. This is not supported. Check models and retrain."
+                    if list(pretrained_scvi_genes) != list(pretrained_scanvi_genes):
+                        raise ValueError("Pretrained SCANVI and SCVI model contain different genes. This is not supported. Check models and retrain.")
 
                     onclass_model = np.load(
                         self.save_path_trained_models + "/OnClass.npz",
                         allow_pickle=True,
                     )
-                    assert set(onclass_model["genes"]).issubset(
-                        set(pretrained_scanvi_genes)
-                    ), "Pretrained SCANVI and OnClass model contain different genes. This is not supported. Retrain OnClass."
+                    if set(onclass_model["genes"]).issubset(set(pretrained_scanvi_genes)):
+                        raise ValueError("Pretrained SCANVI and OnClass model contain different genes. This is not supported. Retrain OnClass.")
                 else:
                     if not os.path.exists(self.save_path_trained_models):
                         os.makedirs(self.save_path_trained_models)
                 self.genes = list(pretrained_scvi_genes)
 
         if self.genes is not None:
-            assert set(self.genes).issubset(
-                set(query_adata.var_names)
-            ), "Query dataset misses genes that were used for reference model training. Retrain reference model, set mode='retrain'"
+            if set(self.genes).issubset(set(query_adata.var_names)):
+                raise ValueError("Query dataset misses genes that were used for reference model training. Retrain reference model, set mode='retrain'")
             self.query_adata = query_adata[:, self.genes].copy()
-            assert hvg is None, "Highly variable gene selection is not available if using trained reference model."
+            if hvg is not None:
+                raise ValueError("Highly variable gene selection is not available if using trained reference model.")
         else:
             gene_intersection = np.intersect1d(ref_adata.var_names, query_adata.var_names)
             if hvg is not None and len(gene_intersection) > hvg:
@@ -210,14 +209,14 @@ class Process_Query:
         self._preprocess()
 
     def _check_validity_anndata(self, adata, input_type):
-        assert check_nonnegative_integers(
-            adata.X
-        ), f"Make sure input {input_type} adata contains raw_counts"
-        assert len(set(adata.var_names)) == len(
-            adata.var_names
-        ), f"{input_type} dataset contains multiple genes with same gene name."
-        assert adata.n_obs > 0, f"{input_type} anndata has no cells."
-        assert adata.n_vars > 0, f"{input_type} anndata has no genes."
+        if not check_nonnegative_integers(adata.X):
+            raise ValueError(f"Make sure input {input_type} adata contains raw_counts")
+        if not len(set(adata.var_names)) == len(adata.var_names):
+            raise ValueError(f"{input_type} dataset contains multiple genes with same gene name.")
+        if adata.n_obs == 0:
+            raise ValueError(f"{input_type} anndata has no cells.")
+        if adata.n_vars == 0:
+            raise ValueError(f"{input_type} anndata has no genes.")
 
     def _setup_dataset(self, adata, key, add_meta=""):
         if isinstance(self.batch_key[key], list):

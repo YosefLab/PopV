@@ -27,7 +27,7 @@ class HARMONY(BaseAlgorithm):
         Key in obs in which celltype annotation results are stored.
     embedding_key
         Key in obsm in which UMAP embedding of integrated data is stored.
-    method_dict
+    method_kwargs
         Additional parameters for HARMONY. Options at harmony.integrate_scanpy
     classifier_dict
         Dictionary to supply non-default values for KNN classifier. n_neighbors and weights supported.
@@ -41,7 +41,7 @@ class HARMONY(BaseAlgorithm):
         labels_key: str | None = "_labels_annotation",
         result_key: str | None = "popv_knn_on_harmony_prediction",
         embedding_key: str | None = "X_umap_harmony_popv",
-        method_dict: dict | None = None,
+        method_kwargs: dict | None = None,
         classifier_dict: dict | None = None,
         embedding_kwargs: dict | None = None,
     ) -> None:
@@ -56,12 +56,12 @@ class HARMONY(BaseAlgorithm):
             embedding_kwargs = {}
         if classifier_dict is None:
             classifier_dict = {}
-        if method_dict is None:
-            method_dict = {}
+        if method_kwargs is None:
+            method_kwargs = {}
 
-        self.method_dict = {"dimred": 50}
-        if method_dict is not None:
-            self.method_dict.update(method_dict)
+        self.method_kwargs = {"dimred": 50}
+        if method_kwargs is not None:
+            self.method_kwargs.update(method_kwargs)
 
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         if classifier_dict is not None:

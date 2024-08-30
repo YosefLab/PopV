@@ -63,6 +63,8 @@ class SCVI_POPV(BaseAlgorithm):
             classifier_dict = {}
         if model_kwargs is None:
             model_kwargs = {}
+        if train_kwargs is None:
+            train_kwargs = {}
         self.save_folder = save_folder
 
         self.model_kwargs = {

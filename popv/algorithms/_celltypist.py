@@ -21,7 +21,7 @@ class CELLTYPIST(BaseAlgorithm):
         Key in obs field of adata for cell-type information.
     result_key
         Key in obs in which celltype annotation results are stored.
-    method_dict
+    method_kwargs
         Additional parameters for celltypist training. Options at celltypist.train
     classifier_dict
         Dictionary to supply non-default values for celltypist annotation. Options at celltypist.annotate
@@ -32,7 +32,7 @@ class CELLTYPIST(BaseAlgorithm):
         batch_key: str | None = "_batch_annotation",
         labels_key: str | None = "_labels_annotation",
         result_key: str | None = "popv_celltypist_prediction",
-        method_dict: dict | None = None,
+        method_kwargs: dict | None = None,
         classifier_dict: dict | None = None,
     ) -> None:
         super().__init__(
@@ -43,12 +43,12 @@ class CELLTYPIST(BaseAlgorithm):
 
         if classifier_dict is None:
             classifier_dict = {}
-        if method_dict is None:
-            method_dict = {}
+        if method_kwargs is None:
+            method_kwargs = {}
 
-        self.method_dict = {"check_expression": False, "n_jobs": 10, "max_iter": 500}
-        if method_dict is not None:
-            self.method_dict.update(method_dict)
+        self.method_kwargs = {"check_expression": False, "n_jobs": 10, "max_iter": 500}
+        if method_kwargs is not None:
+            self.method_kwargs.update(method_kwargs)
 
         self.classifier_dict = {"mode": "best match", "majority_voting": True}
         if classifier_dict is not None:
@@ -66,11 +66,11 @@ class CELLTYPIST(BaseAlgorithm):
             train_idx = adata.obs["_ref_subsample"]
             print(len(train_idx))
             if len(train_idx) > 100000 and not True: # settings.cuml:
-                self.method_dict['use_SGD'] = True
-                self.method_dict['mini_batch'] = True
+                self.method_kwargs['use_SGD'] = True
+                self.method_kwargs['mini_batch'] = True
 
             train_adata = adata[train_idx].copy()
-            model = celltypist.train(train_adata, self.labels_key, use_GPU=settings.cuml, **self.method_dict,)
+            model = celltypist.train(train_adata, self.labels_key, use_GPU=settings.cuml, **self.method_kwargs,)
 
             if adata.uns["_save_path_trained_models"]:
                 model.write(adata.uns["_save_path_trained_models"] + "celltypist.pkl")

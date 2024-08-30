@@ -165,7 +165,8 @@ def make_ontology_dag(obofile, lowercase=False):
                     parentname = id_to_name[parent]
                     g.add_edge(childname, parentname, key=key)
 
-    assert nx.is_directed_acyclic_graph(g) is True
+    if not nx.is_directed_acyclic_graph(g):
+        raise ValueError("Graph is not a Directed Acyclic Graph")
 
     if lowercase:
         mapping = {s: s.lower() for s in list(g.nodes)}

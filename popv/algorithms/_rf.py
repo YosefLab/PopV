@@ -62,6 +62,12 @@ class RF(BaseAlgorithm):
 
         test_x = adata.layers[self.layer_key] if self.layer_key else adata.X
 
+        if len(adata.obs[self.labels_key].unique())>100 and settings.cuml:
+            logging.warning('cuml.ensemble.RandomForestClassifier leads to OOM for more than a hundred labels. Disabling cuML and using sklearn.')
+            enable_cuml = False
+        else:
+            enable_cuml = settings.cuml
+
         if adata.uns["_prediction_mode"] == "retrain":
             train_idx = adata.obs["_ref_subsample"]
             train_x = (
@@ -70,11 +76,6 @@ class RF(BaseAlgorithm):
                 else adata[train_idx].X
             )
             train_y = adata.obs.loc[train_idx, self.labels_key].cat.codes.to_numpy()
-            if len(adata.obs[self.labels_key].unique())>100 and settings.cuml:
-                logging.warning('cuml.ensemble.RandomForestClassifier leads to OOM for more than a hundred labels. Disabling cuML and using sklearn.')
-                enable_cuml = False
-            else:
-                enable_cuml = settings.cuml
             if enable_cuml:
                 from cuml.ensemble import RandomForestClassifier as cuRF
                 self.classifier_dict = {

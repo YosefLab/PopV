@@ -17,7 +17,7 @@ class BBKNN(BaseAlgorithm):
         labels_key: str | None = "_labels_annotation",
         result_key: str | None = "popv_knn_on_bbknn_prediction",
         embedding_key: str | None = "X_bbknn_umap_popv",
-        method_dict: dict | None = None,
+        method_kwargs: dict | None = None,
         classifier_dict: dict | None = None,
         embedding_kwargs: dict | None = None,
     ) -> None:
@@ -34,7 +34,7 @@ class BBKNN(BaseAlgorithm):
             Key in obs in which celltype annotation results are stored.
         embedding_key
             Key in obsm in which UMAP embedding of integrated data is stored.
-        method_dict
+        method_kwargs
             Additional parameters for BBKNN. Options at sc.external.pp.bbknn
         classifier_dict
             Dictionary to supply non-default values for KNN classifier. Options at sklearn.neighbors.KNeighborsClassifier
@@ -51,18 +51,18 @@ class BBKNN(BaseAlgorithm):
             embedding_kwargs = {}
         if classifier_dict is None:
             classifier_dict = {}
-        if method_dict is None:
-            method_dict = {}
+        if method_kwargs is None:
+            method_kwargs = {}
 
-        self.method_dict = {
+        self.method_kwargs = {
             "metric": "euclidean" if self.enable_cuml else "cosine",
             "approx": not self.enable_cuml, # FAISS if cuml
             "n_pcs": 50,
             "neighbors_within_batch": 3 if self.enable_cuml else 8,
             "use_annoy": False, #pynndescent
         }
-        if method_dict is not None:
-            self.method_dict.update(method_dict)
+        if method_kwargs is not None:
+            self.method_kwargs.update(method_kwargs)
 
         self.classifier_dict = {"weights": "uniform", "n_neighbors": 15}
         if classifier_dict is not None:
@@ -76,8 +76,8 @@ class BBKNN(BaseAlgorithm):
         logging.info("Integrating data with bbknn")
         if len(adata.obs[self.batch_key].unique()) > 100 and self.enable_cuml:
             logging.warning('Using PyNNDescent instead of RAPIDS as high number of batches leads to OOM.')
-            self.method_dict['approx'] = True
-        sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_dict)
+            self.method_kwargs['approx'] = True
+        sc.external.pp.bbknn(adata, batch_key=self.batch_key, **self.method_kwargs)
 
     def _predict(self, adata):
         logging.info(f'Saving knn on bbknn results to adata.obs["{self.result_key}"]')

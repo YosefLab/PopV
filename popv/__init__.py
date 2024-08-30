@@ -6,6 +6,7 @@ import logging
 import scanpy as sc
 
 from ._settings import settings
+from . import algorithms, annotation, preprocessing, visualization
 
 try:
     import importlib.metadata as importlib_metadata

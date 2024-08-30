@@ -28,6 +28,12 @@ def pytest_addoption(parser):
         help="Option to specify which devices to use for tests.",
     )
     parser.addoption(
+        "--cuml",
+        action="store",
+        default=False,
+        help="Option to activate cuml based tests.",
+    )
+    parser.addoption(
         "--seed",
         action="store",
         default=0,
@@ -57,17 +63,6 @@ def pytest_collection_modifyitems(config, items):
         # `--cuml` passed
         if not run_cuml and ("cuml" in item.keywords):
             item.add_marker(skip_cuml)
-
-    run_private = config.getoption("--private")
-    skip_private = pytest.mark.skip(reason="need --private option to run")
-    for item in items:
-        # All tests marked with `pytest.mark.private` get skipped unless
-        # `--private` passed
-        if not run_private and ("private" in item.keywords):
-            item.add_marker(skip_private)
-        # Skip all tests not marked with `pytest.mark.private` if `--private` passed
-        elif run_private and ("private" not in item.keywords):
-            item.add_marker(skip_private)
 
 
 @pytest.fixture(scope="session")
