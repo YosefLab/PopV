@@ -4,50 +4,57 @@ import logging
 
 import numpy as np
 import obonet
+import pandas as pd
 import scipy
 from OnClass.OnClassModel import OnClassModel
 
+from popv import settings
+from popv.algorithms._base_algorithm import BaseAlgorithm
 
-class ONCLASS:
+
+class ONCLASS(BaseAlgorithm):
+    """
+    Class to compute KNN classifier after BBKNN integration.
+
+    Parameters
+    ----------
+    batch_key
+        Key in obs field of adata for batch information.
+    labels_key
+        Key in obs field of adata for cell-type information.
+    layer_key
+        Layer in adata used for Onclass prediction.
+    max_iter
+        Maximum iteration in Onclass training
+    cell_ontology_obs_key
+        Key in obs in which ontology celltypes are stored.
+    result_key
+        Key in obs in which celltype annotation results are stored.
+    """
+
     def __init__(
         self,
         batch_key: str | None = "_batch_annotation",
         labels_key: str | None = "_labels_annotation",
-        layers_key: str | None = None,
+        layer_key: str | None = None,
         max_iter: int | None = 30,
         cell_ontology_obs_key: str | None = None,
         result_key: str | None = "popv_onclass_prediction",
         seen_result_key: str | None = "popv_onclass_seen",
     ) -> None:
-        """
-        Class to compute KNN classifier after BBKNN integration.
-
-        Parameters
-        ----------
-        batch_key
-            Key in obs field of adata for batch information.
-        labels_key
-            Key in obs field of adata for cell-type information.
-        layers_key
-            Layer in adata used for Onclass prediction.
-        max_iter
-            Maximum iteration in Onclass training
-        cell_ontology_obs_key
-            Key in obs in which ontology celltypes are stored.
-        result_key
-            Key in obs in which celltype annotation results are stored.
-        """
-        self.batch_key = batch_key
-        self.labels_key = labels_key
-        self.result_key = result_key
-        self.seen_result_key = seen_result_key
-        self.layers_key = layers_key
+        super().__init__(
+            batch_key=batch_key,
+            labels_key=labels_key,
+            result_key=result_key,
+            seen_result_key=seen_result_key,
+            layer_key=layer_key,
+        )
+        self.cell_ontology_obs_key = cell_ontology_obs_key
 
         if cell_ontology_obs_key is None:
             self.cell_ontology_obs_key = self.labels_key + "_cell_ontology_id"
         else:
             self.cell_ontology_obs_key = cell_ontology_obs_key
-        self.shard_size = 50000
         self.max_iter = max_iter
 
     def make_celltype_to_cell_ontology_id_dict(self, cl_obo_file):
@@ -102,26 +109,27 @@ class ONCLASS:
 
         adata.obs[ontology_key] = ontology_id
 
-    def compute_integration(self, adata):
+    def _compute_integration(self, adata):
         pass
 
-    def predict(self, adata):
-        logging.info(f'Computing Onclass. Storing prediction in adata.obs["{self.result_key}"]')
-        adata.obs.loc[adata.obs["_dataset"] == "query", self.cell_ontology_obs_key] = adata.uns[
-            "unknown_celltype_label"
-        ]
+    def _predict(self, adata):
+        logging.info(
+            f'Computing Onclass. Storing prediction in adata.obs["{self.result_key}"]'
+        )
+        adata.obs.loc[
+            adata.obs["_dataset"] == "query", self.cell_ontology_obs_key
+        ] = adata.uns["unknown_celltype_label"]
 
-        train_idx = adata.obs["_dataset"] == "ref"
+        train_idx = adata.obs["_ref_subsample"]
 
-        if self.layers_key is None:
-            train_X = adata[train_idx].X.copy()
-            test_X = adata.X.copy()
+        if self.layer_key is None:
+            train_x = adata[train_idx].X.copy()
+            test_x = adata.X.copy()
         else:
-            train_X = adata[train_idx].layers[self.layers_key].copy()
-            test_X = adata.layers[self.layers_key].copy()
-        if scipy.sparse.issparse(train_X):
-            train_X = train_X.todense()
-            test_X = test_X.todense()
+            train_x = adata[train_idx].layers[self.layer_key].copy()
+            test_x = adata.layers[self.layer_key].copy()
+        if scipy.sparse.issparse(train_x):
+            train_x = train_x.todense()
 
         cl_obo_file = adata.uns["_cl_obo_file"]
         cl_ontology_file = adata.uns["_cl_ontology_file"]
@@ -138,63 +146,82 @@ class ONCLASS:
             model_path = None
 
         if adata.uns["_prediction_mode"] == "retrain":
-            train_Y = adata[train_idx].obs[self.cell_ontology_obs_key]
-            _ = train_model.EmbedCellTypes(train_Y)
+            train_y = adata[train_idx].obs[self.cell_ontology_obs_key]
+            _ = train_model.EmbedCellTypes(train_y)
 
             (
                 corr_train_feature,
-                corr_test_feature,
                 corr_train_genes,
-                _,
             ) = train_model.ProcessTrainFeature(
-                train_X,
-                train_Y,
+                train_x,
+                train_y,
                 adata.var_names,
-                test_feature=test_X,
-                test_genes=adata.var_names,
                 log_transform=False,
             )
 
             train_model.BuildModel(ngene=len(corr_train_genes))
             train_model.Train(
                 corr_train_feature,
-                train_Y,
+                train_y,
                 save_model=model_path,
                 max_iter=self.max_iter,
             )
         else:
             train_model.BuildModel(ngene=None, use_pretrain=model_path)
 
-        adata.obs[self.result_key] = None
-
-        corr_test_feature = train_model.ProcessTestFeature(
-            test_feature=test_X,
-            test_genes=adata.var_names,
-            use_pretrain=model_path,
-            log_transform=False,
-        )
-
-        if adata.uns["_prediction_mode"] == "fast":
-            onclass_seen = np.argmax(train_model.model.predict(corr_test_feature), axis=1)
-            pred_label = [train_model.i2co[ind] for ind in onclass_seen]
-            pred_label_str = [clid_2_name[ind] for ind in pred_label]
-            adata.obs[self.result_key] = pred_label_str
-            adata.obs[self.seen_result_key] = pred_label_str
+        if self.return_probabilities:
+            required_columns = [
+                self.seen_result_key, self.result_key, self.result_key + "_probabilities", self.seen_result_key + "_probabilities"]
         else:
-            onclass_pred = train_model.Predict(corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.0)
-            pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
-            pred_label_str = [clid_2_name[ind] for ind in pred_label]
-            adata.obs[self.result_key] = pred_label_str
+            required_columns = [
+                self.seen_result_key, self.result_key]
 
-            onclass_seen = np.argmax(onclass_pred[0], axis=1)
-            pred_label = [train_model.i2co[ind] for ind in onclass_seen]
-            pred_label_str = [clid_2_name[ind] for ind in pred_label]
-            adata.obs[self.seen_result_key] = pred_label_str
+        result_df = pd.DataFrame(
+            index=adata.obs_names,
+            columns=required_columns
+        )
+        shard_size = int(settings.shard_size)
+        for i in range(0, adata.n_obs, shard_size):
+            tmp_x = test_x[i : i + shard_size]
+            names_x = adata.obs_names[i : i + shard_size]
+            if scipy.sparse.issparse(test_x):
+                tmp_x = tmp_x.todense()
+            corr_test_feature = train_model.ProcessTestFeature(
+                test_feature=tmp_x,
+                test_genes=adata.var_names,
+                use_pretrain=model_path,
+                log_transform=False,
+            )
 
-            if adata.uns["_return_probabilities"]:
-                adata.obs[self.result_key + "_probabilities"] = np.max(onclass_pred[1], axis=1) / onclass_pred[1].sum(1)
-                adata.obsm["onclass_probabilities"] = onclass_pred[1] / onclass_pred[1].sum(1, keepdims=True)
-                adata.obs["popv_onclass_seen" + "_probabilities"] = np.max(onclass_pred[0], axis=1)
+            if adata.uns["_prediction_mode"] == "fast":
+                onclass_seen = np.argmax(
+                    train_model.model.predict(corr_test_feature), axis=1
+                )
+                pred_label = [train_model.i2co[ind] for ind in onclass_seen]
+                pred_label_str = [clid_2_name[ind] for ind in pred_label]
+                result_df.loc[names_x, self.result_key] = pred_label_str
+                result_df.loc[names_x, self.seen_result_key] = pred_label_str
+            else:
+                onclass_pred = train_model.Predict(
+                    corr_test_feature, use_normalize=False, refine=True, unseen_ratio=-1.0
+                )
+                pred_label = [train_model.i2co[ind] for ind in onclass_pred[2]]
+                pred_label_str = [clid_2_name[ind] for ind in pred_label]
+                result_df.loc[names_x, self.result_key] = pred_label_str
 
-    def compute_embedding(self, adata):
+                onclass_seen = np.argmax(onclass_pred[0], axis=1)
+                pred_label = [train_model.i2co[ind] for ind in onclass_seen]
+                pred_label_str = [clid_2_name[ind] for ind in pred_label]
+                result_df.loc[names_x, self.seen_result_key] = pred_label_str
+
+                if self.return_probabilities:
+                    result_df.loc[names_x, self.result_key + "_probabilities"] = np.max(
+                        onclass_pred[1], axis=1
+                    ) / onclass_pred[1].sum(1)
+                    result_df.loc[names_x, self.seen_result_key + "_probabilities"] = np.max(
+                        onclass_pred[0], axis=1
+                    )
+        adata.obs[result_df.columns] = result_df
+
+    def _compute_embedding(self, adata):
         return None

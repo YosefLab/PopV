@@ -13,6 +13,7 @@ import anndata
 import networkx as nx
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from popv import _utils, algorithms
 
@@ -57,16 +58,14 @@ def annotate_data(
 
     all_prediction_keys = []
     all_prediction_keys_seen = []
-    for method in methods:
+
+    for method in tqdm(methods):
         current_method = getattr(algorithms, method)(**methods_kwargs.pop(method, {}))
-        current_method.compute_integration(adata)
-        current_method.predict(adata)
-        current_method.compute_embedding(adata)
+        current_method._compute_integration(adata)
+        current_method._predict(adata)
+        current_method._compute_embedding(adata)
         all_prediction_keys += [current_method.result_key]
-        if hasattr(current_method, "seen_result_key"):
-            all_prediction_keys_seen += [current_method.seen_result_key]
-        else:
-            all_prediction_keys_seen += [current_method.result_key]
+        all_prediction_keys_seen += [current_method.seen_result_key]
 
     # Here we compute the consensus statistics
     logging.info(f"Using predictions {all_prediction_keys} for PopV consensus")
@@ -78,7 +77,9 @@ def annotate_data(
         adata.obs[["popv_prediction", "popv_prediction_score"]] = adata.obs[
             ["popv_majority_vote_prediction", "popv_majority_vote_score"]
         ]
-        adata.obs[["popv_parent"]] = adata.obs[["popv_majority_vote_prediction"]]
+        adata.obs[["popv_parent"]] = adata.obs[
+            ["popv_majority_vote_prediction"]
+        ]
     else:
         ontology_vote_onclass(adata, all_prediction_keys)
         ontology_parent_onclass(adata, all_prediction_keys)
@@ -86,8 +87,8 @@ def annotate_data(
     if save_path is not None:
         prediction_save_path = os.path.join(save_path, "predictions.csv")
         adata[adata.obs._dataset == "query"].obs[
-            all_prediction_keys
-            + [
+            [
+                *all_prediction_keys,
                 "popv_prediction",
                 "popv_prediction_score",
                 "popv_majority_vote_prediction",
@@ -255,8 +256,10 @@ def ontology_parent_onclass(
                     cell_type_root_to_node[cell_type] = root_to_node
                     depth[cell_type] = len(nx.shortest_path(G, cell_type, "cell"))
                     for ancestor_cell_type in root_to_node:
-                        depth[ancestor_cell_type] = len(nx.shortest_path(G, ancestor_cell_type, "cell"))
-                for ancestor_cell_type in list(root_to_node) + [cell_type]:
+                        depth[ancestor_cell_type] = len(
+                            nx.shortest_path(G, ancestor_cell_type, "cell")
+                        )
+                for ancestor_cell_type in [*list(root_to_node), cell_type]:
                     score[ancestor_cell_type] += 1
                 score_popv[cell_type] += 1
         score = {key: min(len(prediction_keys) - allowed_errors, value) for key, value in score.items()}

@@ -18,4 +18,5 @@ __all__ = [
     "onclass",
     "knn_on_scanorama",
     "celltypist",
+    "base_algorithm",
 ]

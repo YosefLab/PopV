@@ -3,6 +3,7 @@
 *~
 buck-out/
 /tests/tmp_testing
+/popv_test_results/
 
 # Compiled files
 .venv/

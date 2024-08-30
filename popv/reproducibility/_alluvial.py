@@ -68,9 +68,8 @@ class AlluvialTool:
 
     def read_input_from_list(self):
         data_table = np.array(self.input)
-        assert (
-            len(set(data_table[:, 0]).intersection(set(data_table[:, 1]))) == 0
-        ), "Column a and b have intersecting elements, this is not supported."
+        if len(set(data_table[:, 0]).intersection(set(data_table[:, 1]))) > 0:
+            raise ValueError("Column a and b have intersecting elements, this is not supported.")
         data_dic = defaultdict(Counter)
         for line in data_table:
             data_dic[line[0]][line[1]] += 1
@@ -104,7 +103,7 @@ class AlluvialTool:
         _ = kwargs
         b_members = (
             sorted(
-                {b_item for b_item_counter in self.data_dic.values() for b_item in b_item_counter},
+                set(self.data_dic),
                 key=lambda x: self.item_widths_dic[x],
             )
             if not b_sort
@@ -281,7 +280,7 @@ class AlluvialTool:
         # f_item = bidi.algorithm.get_display(item)  # for RTL languages
         tal = "<" if f_item == item else ">"
         if not disp_width:
-            ans = ("{:%s}" % tal).format(item)
+            ans = (f"{{:{tal}}}").format(item)
         else:
             width = self.item_coord_dic[item].get_width()
             if side and width_in or (not side and not width_in):

@@ -17,14 +17,18 @@ from .reproducibility import _alluvial
 
 def _sample_report(adata, cell_type_key, score_key, pred_keys):
     adata.obs["counts"] = np.zeros(len(adata.obs))
-    _counts_adata = adata.obs.groupby([cell_type_key, score_key]).count()[["counts"]].reset_index()
+    _counts_adata = (
+        adata.obs.groupby([cell_type_key, score_key]).count()[["counts"]].reset_index()
+    )
     counts_adata = _counts_adata.pivot(cell_type_key, score_key, "counts")
     counts_adata = counts_adata.dropna()
     np_counts = counts_adata.dropna().to_numpy()
     row_sums = np_counts.sum(axis=1)
     new_matrix = np_counts / row_sums[:, np.newaxis]
     ax = (
-        pd.DataFrame(data=new_matrix, index=counts_adata.index, columns=counts_adata.columns)
+        pd.DataFrame(
+            data=new_matrix, index=counts_adata.index, columns=counts_adata.columns
+        )
         .sort_values(7)
         .plot(kind="bar", stacked=True, figsize=(20, 7))
     )
@@ -38,16 +42,31 @@ def _sample_report(adata, cell_type_key, score_key, pred_keys):
     ax.bar_label(ax.containers[0])
     plt.show()
     for key in pred_keys:
-        counts_adata = adata.obs.groupby([key, cell_type_key]).count().reset_index().pivot(key, cell_type_key, "counts")
+        counts_adata = (
+            adata.obs.groupby([key, cell_type_key])
+            .count()
+            .reset_index()
+            .pivot(key, cell_type_key, "counts")
+        )
 
         np_counts = counts_adata.dropna().to_numpy()
         row_sums = np_counts.sum(axis=0)
         new_matrix = np_counts / row_sums[np.newaxis, :]
-        new_index = [counts_adata.index[r] + " " + str(np.sum(np_counts[r])) for r in range(new_matrix.shape[0])]
-        new_columns = [counts_adata.columns[c] + " " + str(np.sum(np_counts[:, c])) for c in range(new_matrix.shape[1])]
-        input_data = pd.DataFrame(data=new_matrix, index=new_index, columns=new_columns).to_dict()
+        new_index = [
+            counts_adata.index[r] + " " + str(np.sum(np_counts[r]))
+            for r in range(new_matrix.shape[0])
+        ]
+        new_columns = [
+            counts_adata.columns[c] + " " + str(np.sum(np_counts[:, c]))
+            for c in range(new_matrix.shape[1])
+        ]
+        input_data = pd.DataFrame(
+            data=new_matrix, index=new_index, columns=new_columns
+        ).to_dict()
         cmap = matplotlib.cm.get_cmap("jet")
-        sorted_index = np.array(new_index)[sorted(range(new_matrix.shape[0]), key=lambda r: np.sum(np_counts[r]))]
+        sorted_index = np.array(new_index)[
+            sorted(range(new_matrix.shape[0]), key=lambda r: np.sum(np_counts[r]))
+        ]
         sorted_columns = np.array(new_columns)[
             sorted(range(new_matrix.shape[1]), key=lambda c: np.sum(np_counts[:, c]))
         ]
@@ -108,7 +127,9 @@ def agreement_score_bar_plot(
         )
         for x in celltypes
     ]
-    mean_agreement = pd.DataFrame([mean_agreement], index=["agreement"], columns=celltypes).T
+    mean_agreement = pd.DataFrame(
+        [mean_agreement], index=["agreement"], columns=celltypes
+    ).T
     mean_agreement.dropna(inplace=True)
     mean_agreement = mean_agreement.sort_values("agreement", ascending=True)
     ax = mean_agreement.plot.bar(y="agreement", figsize=(15, 2), legend=False)
@@ -142,7 +163,13 @@ def prediction_score_bar_plot(
     Returns axis object of corresponding plot.
 
     """
-    ax = adata[adata.obs["_dataset"] == "query"].obs[popv_prediction_score].value_counts().sort_index().plot.bar()
+    ax = (
+        adata[adata.obs["_dataset"] == "query"]
+        .obs[popv_prediction_score]
+        .value_counts()
+        .sort_index()
+        .plot.bar()
+    )
 
     ax.set_xlabel("Score")
     ax.set_ylabel("Frequency")
@@ -156,7 +183,6 @@ def prediction_score_bar_plot(
 def celltype_ratio_bar_plot(
     adata,
     popv_prediction: str | None = "popv_prediction",
-    normalize: bool = True,
     save_folder: str | None = None,
 ):
     """
@@ -168,8 +194,6 @@ def celltype_ratio_bar_plot(
         AnnData object.
     popv_prediction
         Key in adata.obs for predictions.
-    normalize
-        Plot relative cell-type abundance. Set to False to plot absolute abundance.
     save_folder
         Path to a folder for storing the plot. Defaults to None and plot is not stored.
 
@@ -185,12 +209,12 @@ def celltype_ratio_bar_plot(
     for x in cell_types:
         prop.loc[x, "query"] = np.sum(labels[is_query] == x)
         prop.loc[x, "ref"] = np.sum(labels[~is_query] == x)
-    if normalize:
-        prop = prop.div(prop.sum(axis=0), axis=1)
 
-    ax = prop.loc[cell_types].plot(kind="bar", figsize=(len(cell_types) * 0.5, 4), logy=(not normalize))
+    ax = prop.loc[cell_types].plot(
+        kind="bar", figsize=(len(cell_types) * 0.5, 4), logy=True
+    )
     ax.set_ylabel("Celltype")
-    ax.set_ylabel("Celltype Abundance")
+    ax.set_ylabel("log Celltype Abundance")
     if save_folder is not None:
         save_path = os.path.join(save_folder, "celltype_prop_barplot.pdf")
         ax.get_figure().savefig(save_path, bbox_inches="tight", dpi=300)

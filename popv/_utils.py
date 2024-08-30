@@ -39,7 +39,7 @@ def subsample_dataset(
     sample_idx = []
     labels_counts = dict(adata.obs[labels_key].value_counts())
 
-    logging.info(f"Sampling {n_samples_per_label} per label")
+    logging.info(f"Sampling {n_samples_per_label} cells per label")
 
     for label in ignore_label:
         labels_counts.pop(label, None)
@@ -165,7 +165,8 @@ def make_ontology_dag(obofile, lowercase=False):
                     parentname = id_to_name[parent]
                     g.add_edge(childname, parentname, key=key)
 
-    assert nx.is_directed_acyclic_graph(g) is True
+    if not nx.is_directed_acyclic_graph(g):
+        raise ValueError("Graph is not a Directed Acyclic Graph")
 
     if lowercase:
         mapping = {s: s.lower() for s in list(g.nodes)}
