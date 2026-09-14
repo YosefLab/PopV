@@ -2,7 +2,7 @@ fail_fast: false
 default_language_version:
   python: python3
 default_stages:
-  - commit
+  - pre-commit
 minimum_pre_commit_version: 2.16.0
 repos:
   - repo: https://github.com/asottile/blacken-docs
@@ -30,7 +30,7 @@ repos:
           )$
 
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.47.0
+    rev: v0.49.1
     hooks:
       - id: markdownlint-fix
         exclude: |
@@ -40,7 +40,7 @@ repos:
           )$
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.4
+    rev: v0.16.7
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
